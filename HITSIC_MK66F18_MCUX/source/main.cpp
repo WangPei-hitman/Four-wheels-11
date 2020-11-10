@@ -89,8 +89,10 @@ pitMgr_t* servocontrol =nullptr;
 pitMgr_t* directiontask=nullptr;
 
 float speedL = 8.0f,speedR=8.0f,servo_ctrl=7.5f;
-float myerror1 = 0,myerror2=0,kp=0,kd=0;
-uint8_t front = 50;
+int myerror1 = 0,myerror2=0;
+float kp=0,kd=0;
+int front = 50;
+int midint;
 
 
 void motorCTRL (void);
@@ -186,10 +188,7 @@ void main(void)
     while (true)
     {
         //TODO: 在这里添加车模保护代码
-        for(uint8_t i=0;i<120 ;i++)
-        {
-            mid_line[i] = 94;
-        }
+
         while (kStatus_Success != DMADVP_TransferGetFullBuffer(DMADVP0, &dmadvpHandle, &fullBuffer));
         image_main();
 
@@ -209,9 +208,8 @@ void main(void)
             }
         }
 
-        DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
-
-        DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, fullBuffer);
+      DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
+      DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, fullBuffer);
     }
 }
 
@@ -224,7 +222,7 @@ void MENU_DataSetUp(void)
            {
                 MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL, "speedL",10 ,menuItem_data_global));
                 MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR, "speedR",11 ,menuItem_data_global));
-                MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
+                MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
                 MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&front, "front",13 ,menuItem_data_global));
             }
 
@@ -235,7 +233,8 @@ void MENU_DataSetUp(void)
                   MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kp, "kp",14 ,menuItem_data_global));
                   MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kd, "kd",15 ,menuItem_data_global));
               }
-              MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(varfType, &myerror1, "error", 17,menuItem_data_ROFlag));
+              MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(variType, &myerror2, "error", 17,menuItem_data_ROFlag));
+              MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(variType, &midint, "mid", 18,menuItem_data_ROFlag));
 
 }
 
@@ -263,7 +262,7 @@ void controlInit(void)
     assert(motorcontrol);
     //servocontrol = pitMgr_t::insert(20U,2U,servoCTRL,pitMgr_t::enable);
     //assert(servocontrol);
-    directiontask = pitMgr_t::insert(20U,2U,directionCTRL,pitMgr_t::enable);
+    directiontask = pitMgr_t::insert(20U,3U,directionCTRL,pitMgr_t::enable);
     assert(directiontask);
 }
 
@@ -284,8 +283,9 @@ void servoCTRL (void)
 
 void directionCTRL(void)
 {
-    myerror2 = (float)(mid_line[50]-94);
-    servo_ctrl=7.5-0.01*(kp*myerror2+kd*(myerror2-myerror1));
+    midint =(int)(mid_line[front]);
+    myerror2 = midint-94;
+    servo_ctrl=7.5-0.01*(kp*myerror2*1.0+kd*(myerror2*1.0-myerror1*1.0));
     myerror1 =myerror2;
     SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
 }
