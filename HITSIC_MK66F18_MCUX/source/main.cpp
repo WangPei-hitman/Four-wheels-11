@@ -85,12 +85,17 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 
 pitMgr_t* motorcontrol =nullptr;
 pitMgr_t* servocontrol =nullptr;
+pitMgr_t* directiontask=nullptr;
+
 float speedL = 0.0f,speedR=0.0,servo_ctrl=7.5f;
+float myerror1 = 0,myerror2=0,kp=0,kd=0;
+uint8_t midline =94;
 
 void motorCTRL (void);
 void controlInit(void);
 void servoCTRL (void);
 void MENU_DataSetUp(void);
+void directionCTRL(void);
 
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
@@ -172,7 +177,16 @@ void MENU_DataSetUp(void)
                 MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL, "speedL",10 ,menuItem_data_global));
                 MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR, "speedR",11 ,menuItem_data_global));
                 MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
+                MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&midline, "midline",15 ,menuItem_data_global));
             }
+
+       static menu_list_t *pidList = MENU_ListConstruct("pidList", 20, menu_menuRoot);
+              assert(pidList);
+              MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType,pidList , "PID_control", 0, 0));
+              {
+                  MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kp, "kp",13 ,menuItem_data_global));
+                  MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kd, "kd",14 ,menuItem_data_global));
+              }
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
@@ -186,10 +200,12 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
 
 void controlInit(void)
 {
-    motorcontrol =  pitMgr_t::insert(6U,2U,motorCTRL,pitMgr_t::enable);
-    assert(motorcontrol);
-    servocontrol = pitMgr_t::insert(20U,2U,servoCTRL,pitMgr_t::enable);
-    assert(servocontrol);
+   // motorcontrol =  pitMgr_t::insert(6U,2U,motorCTRL,pitMgr_t::enable);
+    //assert(motorcontrol);
+    //servocontrol = pitMgr_t::insert(20U,2U,servoCTRL,pitMgr_t::enable);
+    //assert(servocontrol);
+    directiontask = pitMgr_t::insert(20U,2U,directionCTRL,pitMgr_t::enable);
+    assert(directiontask);
 }
 
 void motorCTRL (void)
@@ -205,3 +221,14 @@ void servoCTRL (void)
 {
      SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
 }
+
+
+void directionCTRL(void)
+{
+    myerror2 = midline-94;
+    servo_ctrl=7.5-0.01*(kp*myerror2+kd*(myerror2-myerror1));
+    myerror1 =myerror2;
+    SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
+}
+
+
