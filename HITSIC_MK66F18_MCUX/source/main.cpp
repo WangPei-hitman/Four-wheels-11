@@ -82,7 +82,14 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 /** SCLIB_TEST */
 #include "sc_test.hpp"
 
-void motortest (void);
+
+pitMgr_t* motorcontrol =nullptr;
+pitMgr_t* servocontrol =nullptr;
+float speedL = 0.0f,speedR=0.0,servo_ctrl=7.5f;
+
+void motorCTRL (void);
+void controlInit(void);
+void servoCTRL (void);
 void MENU_DataSetUp(void);
 
 cam_zf9v034_configPacket_t cameraCfg;
@@ -140,8 +147,9 @@ void main(void)
     MENU_Resume();
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
+    controlInit();
 
-    pitMgr_t::insert(6U, 3U, motortest, pitMgr_t::enable);
+
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
 
@@ -156,8 +164,15 @@ void main(void)
 
 void MENU_DataSetUp(void)
 {
-
     //TODO: 在这里添加子菜单和菜单项
+    static menu_list_t *TestList = MENU_ListConstruct("para_control", 20, menu_menuRoot);
+         assert(TestList);
+          MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, TestList, "para_control", 0, 0));
+           {
+                MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL, "speedL",10 ,menuItem_data_global));
+                MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR, "speedR",11 ,menuItem_data_global));
+                MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
+            }
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
@@ -168,3 +183,25 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
 }
 
 
+
+void controlInit(void)
+{
+    motorcontrol =  pitMgr_t::insert(6U,2U,motorCTRL,pitMgr_t::enable);
+    assert(motorcontrol);
+    servocontrol = pitMgr_t::insert(20U,2U,servoCTRL,pitMgr_t::enable);
+    assert(servocontrol);
+}
+
+void motorCTRL (void)
+{
+    SCFTM_PWM_Change(FTM0,kFTM_Chnl_0,20000U,0.0f);
+    SCFTM_PWM_Change(FTM0,kFTM_Chnl_1,20000U,speedR);
+
+    SCFTM_PWM_Change(FTM0,kFTM_Chnl_2,20000U,speedL);
+    SCFTM_PWM_Change(FTM0,kFTM_Chnl_3,20000U,0.0f);
+}
+
+void servoCTRL (void)
+{
+     SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
+}
