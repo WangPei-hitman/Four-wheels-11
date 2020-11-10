@@ -45,6 +45,7 @@
  * limitations under the License.
  */
 #include "hitsic_common.h"
+#include "image.h"
 
 /** HITSIC_Module_DRV */
 #include "drv_ftfx_flash.hpp"
@@ -81,7 +82,6 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 
 /** SCLIB_TEST */
 #include "sc_test.hpp"
-
 
 void MENU_DataSetUp(void);
 
@@ -137,24 +137,75 @@ void main(void)
     /** 初始化IMU */
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
-    MENU_Resume();
+    //MENU_Resume();
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
 
+    FATFS_BasicTest();
+    SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+    //CAM_ZF9V034_UnitTest();
+    //SDK_DelayAtLeastUs(1000 * 1000, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+
+
+    inv::IMU_UnitTest_AutoRefresh();
+    sc::SC_UnitTest_AutoRefresh();
+
+    MENU_Resume();
+    MENU_Suspend();
+
     float f = arm_sin_f32(0.6f);
 
-    while (true)
-    {
+    cam_zf9v034_configPacket_t cameraCfg;
+    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                                   //设置摄像头配置
+    CAM_ZF9V034_CfgWrite(&cameraCfg);                                   //写入配置
+    dmadvp_config_t dmadvpCfg;
+    CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
+    DMADVP_Init(DMADVP0, &dmadvpCfg);
+    dmadvp_handle_t dmadvpHandle;
+    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_UnitTestDmaCallback);
+    uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
+    uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
+
+    disp_ssd1306_frameBuffer_t *dispBuffer = new disp_ssd1306_frameBuffer_t;
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
+    DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
+
+
+//    while (true)
+//    {
         //TODO: 在这里添加车模保护代码
-    }
+        while (kStatus_Success != DMADVP_TransferGetFullBuffer(DMADVP0, &dmadvpHandle, &fullBuffer));
+        image_main();
+
+//        dispBuffer->Clear();
+//        const uint8_t imageTH = 160;
+//        for (int i = 0; i < cameraCfg.imageRow; i += 2)
+//        {
+//            int16_t imageRow = i >> 1;//除以2,为了加速;
+//            int16_t dispRow = (imageRow / 8) + 1, dispShift = (imageRow % 8);
+//            for (int j = 0; j < cameraCfg.imageCol; j += 2)
+//            {
+//                int16_t dispCol = j >> 1;
+//                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j != 94 && j!= mid_line[i])
+//                {
+//                    dispBuffer->SetPixelColor(dispCol, imageRow, 1);
+//                }
+//            }
+//        }
+//
+//        DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
+//
+//        DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, fullBuffer);
+//    }
 }
 
 void MENU_DataSetUp(void)
 {
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EXAMPLE", 0, 0));
-    //TODO: 在这里添加子菜单和菜单项
+    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "TEST", 0, 0));
+    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(variType, &threshold, "threshold", 10,menuItem_data_global));
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
@@ -162,4 +213,8 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
     //TODO: 补完本回调函数
 
     //TODO: 添加图像处理（转向控制也可以写在这里）
+
 }
+
+
+
