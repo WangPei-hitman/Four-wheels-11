@@ -82,7 +82,7 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 /** SCLIB_TEST */
 #include "sc_test.hpp"
 
-
+void motortest (void);
 void MENU_DataSetUp(void);
 
 cam_zf9v034_configPacket_t cameraCfg;
@@ -140,6 +140,8 @@ void main(void)
     MENU_Resume();
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
+
+    pitMgr_t::insert(6U, 3U, motortest, pitMgr_t::enable);
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
 
@@ -147,13 +149,14 @@ void main(void)
 
     while (true)
     {
+
         //TODO: 在这里添加车模保护代码
     }
 }
 
 void MENU_DataSetUp(void)
 {
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EXAMPLE", 0, 0));
+
     //TODO: 在这里添加子菜单和菜单项
 }
 
@@ -163,3 +166,5 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
 
     //TODO: 添加图像处理（转向控制也可以写在这里）
 }
+
+
