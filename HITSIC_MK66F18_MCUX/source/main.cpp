@@ -163,7 +163,7 @@ void main(void)
     controlInit();
 
 
-    //MENU_Suspend();
+    MENU_Suspend();
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
 
@@ -193,7 +193,7 @@ void main(void)
         image_main();
 
         dispBuffer->Clear();
-        const uint8_t imageTH = 160;
+        const uint8_t imageTH = threshold;
         for (int i = 0; i < cameraCfg.imageRow; i += 2)
         {
             int16_t imageRow = i >> 1;//除以2,为了加速;
@@ -235,23 +235,23 @@ void MENU_DataSetUp(void)
               }
               MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(variType, &myerror2, "error", 17,menuItem_data_ROFlag));
               MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(variType, &midint, "mid", 18,menuItem_data_ROFlag));
-
+              //MENU_ListInsert
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
-    //TODO: 补完本回调函数
-
-    //TODO: 添加图像处理（转向控制也可以写在这里）
-    dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*) userData;
-
-    DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);
-    //PRINTF("new full buffer: 0x%-8.8x = 0x%-8.8x\n", handle->fullBuffer.front(), handle->xferCfg.destAddr);
-    if (kStatus_Success != DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle))
-    {
-        DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
-        //PRINTF("transfer stop! insufficent buffer\n");
-    }
+//    //TODO: 补完本回调函数
+//
+//    //TODO: 添加图像处理（转向控制也可以写在这里）
+//    dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*) userData;
+//
+//    DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);
+//    //PRINTF("new full buffer: 0x%-8.8x = 0x%-8.8x\n", handle->fullBuffer.front(), handle->xferCfg.destAddr);
+//    if (kStatus_Success != DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle))
+//    {
+//        DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
+//        //PRINTF("transfer stop! insufficent buffer\n");
+//    }
 }
 
 
@@ -264,6 +264,11 @@ void controlInit(void)
     //assert(servocontrol);
     directiontask = pitMgr_t::insert(20U,3U,directionCTRL,pitMgr_t::enable);
     assert(directiontask);
+
+    PORT_SetPinInterruptConfig(PORTA, 9U, kPORT_InterruptRisingEdge);
+    extInt_t::insert(PORTA, 9U,MENU_Suspend);
+    PORT_SetPinInterruptConfig(PORTA, 11U, kPORT_InterruptRisingEdge);
+    extInt_t::insert(PORTA, 9U,MENU_Resume);
 }
 
 void motorCTRL (void)
@@ -285,9 +290,19 @@ void directionCTRL(void)
 {
     midint =(int)(mid_line[front]);
     myerror2 = midint-94;
-    servo_ctrl=7.5-0.01*(kp*myerror2*1.0+kd*(myerror2*1.0-myerror1*1.0));
-    myerror1 =myerror2;
-    SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
-}
 
+    servo_ctrl=7.5f-0.01*(kp*myerror2*1.0+kd*(myerror2*1.0-myerror1*1.0));
+    myerror1 =myerror2;
+
+    if(servo_ctrl>8.2f)
+    {
+        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,8.2f);
+    }
+    else if(servo_ctrl<6.7f)
+    {
+        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,6.7f);
+    }
+    else
+        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
+}
 
