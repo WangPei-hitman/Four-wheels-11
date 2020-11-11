@@ -92,8 +92,9 @@ pitMgr_t* directiontask=nullptr;
 float speedL = 8.0f,speedR=8.0f,servo_ctrl=7.5f;
 int myerror1 = 0,myerror2=0;
 float kp=0,kd=0;
-int front = 50;
-int midint;
+extern int front;
+int midint,thro;
+extern int protect;//protection
 
 
 void motorCTRL (void);
@@ -160,6 +161,7 @@ void main(void)
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
     MENU_Resume();
+    thro=(int)threshold;
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
     controlInit();
@@ -185,6 +187,7 @@ void MENU_DataSetUp(void)
                 MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR, "speedR",11 ,menuItem_data_global));
                 MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
                 MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&front, "front",13 ,menuItem_data_global));
+                MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&thro, "threshold",19 ,menuItem_data_global));
             }
 
        static menu_list_t *pidList = MENU_ListConstruct("pidList", 20, menu_menuRoot);
@@ -234,11 +237,22 @@ void controlInit(void)
 
 void motorCTRL (void)
 {
+    if(1==protect)
+    {
+        SCFTM_PWM_Change(FTM0,kFTM_Chnl_0,20000U,0.0f);
+        SCFTM_PWM_Change(FTM0,kFTM_Chnl_1,20000U,0.0f);
+
+        SCFTM_PWM_Change(FTM0,kFTM_Chnl_2,20000U,0.0f);
+        SCFTM_PWM_Change(FTM0,kFTM_Chnl_3,20000U,0.0f);
+    }
+    else
+    {
     SCFTM_PWM_Change(FTM0,kFTM_Chnl_0,20000U,0.0f);
     SCFTM_PWM_Change(FTM0,kFTM_Chnl_1,20000U,speedR);
 
     SCFTM_PWM_Change(FTM0,kFTM_Chnl_2,20000U,speedL);
     SCFTM_PWM_Change(FTM0,kFTM_Chnl_3,20000U,0.0f);
+    }
 }
 
 void servoCTRL (void)
@@ -301,7 +315,7 @@ void pic_tackle(void)
             for (int j = 0; j < cameraCfg.imageCol; j += 2)
             {
                 int16_t dispCol = j >> 1;
-                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j!= mid_line[i])
+                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j!= mid_line[i] && j!=94)
                 {
                     dispBuffer->SetPixelColor(dispCol, imageRow, 1);
                 }

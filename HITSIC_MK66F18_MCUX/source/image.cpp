@@ -42,6 +42,7 @@ uint8_t mid_line[CAMERA_H];
 int all_connect_num = 0;//所有白条子数
 uint8_t top_road;//赛道最高处所在行数
 uint8_t threshold = 120;//阈值
+int front = 50,protect;
 
 ////////////////////////////////////////////
 //功能：二值化
@@ -424,6 +425,27 @@ void get_mid_line(void)
         }
 
 }
+
+////////////////////////////////////////
+//function:protection condition
+//output:lift_line&right_line
+//input:int protect
+/////////////////////////////////////////
+
+void img_proction(void)
+{
+    uint8_t i;
+    protect = 0;
+    for(i=80;i>=70;i--)
+    {
+        if(left_line[i]==MISS && right_line[i]==MISS)
+        {
+            protect = 1;
+        }
+    }
+}
+
+
 ////////////////////////////////////////////
 //功能：图像处理主程序
 //输入：
@@ -440,10 +462,11 @@ void image_main()
     /*到此处为止，我们已经得到了属于赛道的结构体数组my_road[CAMERA_H]*/
     ordinary_two_line();
     get_mid_line();
+    img_proction();
 
-    for (int i = NEAR_LINE; i >= FAR_LINE; i--)
-        if (mid_line[i] != MISS)
-            IMG[i][mid_line[i]] = red;
+//    for (int i = NEAR_LINE; i >= FAR_LINE; i--)
+//        if (mid_line[i] != MISS)
+//            IMG[i][mid_line[i]] = red;
 }
 
 
