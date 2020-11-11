@@ -166,6 +166,7 @@ void main(void)
     MENU_Suspend();
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
+    //MENU_Suspend();
 
     float f = arm_sin_f32(0.6f);
 
@@ -201,7 +202,7 @@ void main(void)
             for (int j = 0; j < cameraCfg.imageCol; j += 2)
             {
                 int16_t dispCol = j >> 1;
-                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j != 94 && j!= mid_line[i])
+                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j!= mid_line[i])
                 {
                     dispBuffer->SetPixelColor(dispCol, imageRow, 1);
                 }

@@ -376,11 +376,15 @@ void ordinary_two_line(void)
 //输出：
 //备注：zxecf
 ////////////////////////////////////////////
-//void board_fixed(void)
+//void boarder_fixer(uint8_t* line)
 //{
 //    uint8_t i;
 //    uint8_t j;
-//    for(i=)
+//    uint8_t jud[2][CAMERA_H];
+//    for(i=119;i>=0;i++)
+//    {
+//        if((left_lint[i] == MISS || ))
+//    }
 //}
 
 
