@@ -78,9 +78,8 @@ const edma_config_t DMA_config = {
   .enableDebugMode = false
 };
 
-/* Empty initialization function (commented out)
 static void DMA_init(void) {
-} */
+}
 
 /***********************************************************************************************************************
  * GPIOA initialization code
@@ -367,11 +366,11 @@ instance:
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS **********/
 /* clang-format on */
 const uart_config_t CAM_UART_config = {
-  .baudRate_Bps = 9600UL,
+  .baudRate_Bps = 9600,
   .parityMode = kUART_ParityDisabled,
   .stopBitCount = kUART_OneStopBit,
-  .txFifoWatermark = 0U,
-  .rxFifoWatermark = 1U,
+  .txFifoWatermark = 0,
+  .rxFifoWatermark = 1,
   .idleType = kUART_IdleTypeStartBit,
   .enableTx = true,
   .enableRx = true
@@ -415,7 +414,7 @@ instance:
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS **********/
 /* clang-format on */
 const lpuart_config_t DBG_LPUART_config = {
-  .baudRate_Bps = 921600UL,
+  .baudRate_Bps = 921600,
   .parityMode = kLPUART_ParityDisabled,
   .dataBitsCount = kLPUART_EightDataBits,
   .isMsb = false,
@@ -648,9 +647,9 @@ const ftm_config_t ENCO_L_config = {
   .pwmSyncMode = kFTM_SoftwareTrigger,
   .reloadPoints = kFTM_CntMax | kFTM_CntMin,
   .faultMode = kFTM_Fault_Disable,
-  .faultFilterValue = 0U,
+  .faultFilterValue = 0,
   .deadTimePrescale = kFTM_Deadtime_Prescale_1,
-  .deadTimeValue = 0UL,
+  .deadTimeValue = 0,
   .extTriggers = 0,
   .chnlInitState = 0,
   .chnlPolarity = 0,
@@ -730,9 +729,9 @@ const ftm_config_t ENCO_R_config = {
   .pwmSyncMode = kFTM_SoftwareTrigger,
   .reloadPoints = 0,
   .faultMode = kFTM_Fault_Disable,
-  .faultFilterValue = 0U,
+  .faultFilterValue = 0,
   .deadTimePrescale = kFTM_Deadtime_Prescale_1,
-  .deadTimeValue = 0UL,
+  .deadTimeValue = 0,
   .extTriggers = 0,
   .chnlInitState = 0,
   .chnlPolarity = 0,
@@ -785,8 +784,8 @@ instance:
 const i2c_master_config_t IMU_I2C_config = {
   .enableMaster = true,
   .enableStopHold = false,
-  .baudRate_Bps = 400000UL,
-  .glitchFilterWidth = 0U
+  .baudRate_Bps = 400000,
+  .glitchFilterWidth = 0
 };
 
 static void IMU_I2C_init(void) {
@@ -864,9 +863,9 @@ const ftm_config_t MOTOR_config = {
   .pwmSyncMode = kFTM_SoftwareTrigger,
   .reloadPoints = kFTM_CntMax | kFTM_CntMin,
   .faultMode = kFTM_Fault_Disable,
-  .faultFilterValue = 0U,
+  .faultFilterValue = 0,
   .deadTimePrescale = kFTM_Deadtime_Prescale_1,
-  .deadTimeValue = 0UL,
+  .deadTimeValue = 0,
   .extTriggers = 0,
   .chnlInitState = 0,
   .chnlPolarity = 0,
@@ -876,22 +875,22 @@ const ftm_chnl_pwm_signal_param_t MOTOR_centerPwmSignalParams[] = {
   {
     .chnlNumber = kFTM_Chnl_0,
     .level = kFTM_HighTrue,
-    .dutyCyclePercent = 0U
+    .dutyCyclePercent = 0
   },
   {
     .chnlNumber = kFTM_Chnl_1,
     .level = kFTM_HighTrue,
-    .dutyCyclePercent = 0U
+    .dutyCyclePercent = 0
   },
   {
     .chnlNumber = kFTM_Chnl_2,
     .level = kFTM_HighTrue,
-    .dutyCyclePercent = 0U
+    .dutyCyclePercent = 0
   },
   {
     .chnlNumber = kFTM_Chnl_3,
     .level = kFTM_HighTrue,
-    .dutyCyclePercent = 0U
+    .dutyCyclePercent = 0
   }
 };
 
@@ -929,7 +928,7 @@ instance:
         - direction: 'kDSPI_MsbFirst'
         - pcsToSckDelayInNanoSec: '1000'
         - lastSckToPcsDelayInNanoSec: '1000'
-        - betweenTransferDelayInNanoSec: '0'
+        - betweenTransferDelayInNanoSec: '1000'
       - whichPcs: 'PCS0_SS'
       - pcsActiveHighOrLow: 'kDSPI_PcsActiveLow'
       - enableContinuousSCK: 'false'
@@ -941,14 +940,14 @@ instance:
 const dspi_master_config_t OLED_SPI_config = {
   .whichCtar = kDSPI_Ctar0,
   .ctarConfig = {
-    .baudRate = 10000000UL,
-    .bitsPerFrame = 8UL,
+    .baudRate = 10000000,
+    .bitsPerFrame = 8,
     .cpol = kDSPI_ClockPolarityActiveHigh,
     .cpha = kDSPI_ClockPhaseFirstEdge,
     .direction = kDSPI_MsbFirst,
-    .pcsToSckDelayInNanoSec = 1000UL,
-    .lastSckToPcsDelayInNanoSec = 1000UL,
-    .betweenTransferDelayInNanoSec = 0UL
+    .pcsToSckDelayInNanoSec = 1000,
+    .lastSckToPcsDelayInNanoSec = 1000,
+    .betweenTransferDelayInNanoSec = 1000
   },
   .whichPcs = kDSPI_Pcs0,
   .pcsActiveHighOrLow = kDSPI_PcsActiveLow,
@@ -1018,9 +1017,9 @@ const ftm_config_t SERVO_config = {
   .pwmSyncMode = kFTM_SoftwareTrigger,
   .reloadPoints = kFTM_CntMin,
   .faultMode = kFTM_Fault_Disable,
-  .faultFilterValue = 0U,
+  .faultFilterValue = 0,
   .deadTimePrescale = kFTM_Deadtime_Prescale_1,
-  .deadTimeValue = 0UL,
+  .deadTimeValue = 0,
   .extTriggers = 0,
   .chnlInitState = 0,
   .chnlPolarity = 0,
@@ -1030,7 +1029,7 @@ const ftm_chnl_pwm_signal_param_t SERVO_centerPwmSignalParams[] = {
   {
     .chnlNumber = kFTM_Chnl_7,
     .level = kFTM_HighTrue,
-    .dutyCyclePercent = 30U
+    .dutyCyclePercent = 30
   }
 };
 
@@ -1069,11 +1068,11 @@ instance:
  * BE CAREFUL MODIFYING THIS COMMENT - IT IS YAML SETTINGS FOR TOOLS **********/
 /* clang-format on */
 const uart_config_t WLAN_UART_config = {
-  .baudRate_Bps = 921600UL,
+  .baudRate_Bps = 921600,
   .parityMode = kUART_ParityDisabled,
   .stopBitCount = kUART_OneStopBit,
-  .txFifoWatermark = 0U,
-  .rxFifoWatermark = 1U,
+  .txFifoWatermark = 0,
+  .rxFifoWatermark = 1,
   .idleType = kUART_IdleTypeStartBit,
   .enableTx = true,
   .enableRx = true
@@ -1093,6 +1092,7 @@ void RTEPIP_Basic(void)
   EDMA_Init(DMA_DMA_BASEADDR, &DMA_config);
 
   /* Initialize components */
+  DMA_init();
   GPIOA_init();
   GPIOB_init();
   GPIOC_init();
