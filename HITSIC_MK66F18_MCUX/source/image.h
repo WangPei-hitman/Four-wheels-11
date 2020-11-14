@@ -17,7 +17,7 @@
 #define NEAR_LINE 113//图像处理下边界
 #define LEFT_SIDE 0//图像处理左边界
 #define RIGHT_SIDE 187//图像处理右边界
-#define MISS 94
+#define MISS 255
 #define white_num_MAX 10//每行最多允许白条数
 
 /////////////////////////////
@@ -48,6 +48,7 @@ void ordinary_two_line(void);
 void image_main();
 void get_mid_line(void);
 void img_proction(void);
+void boarder_fixer(void);
 
 void my_memset(uint8_t* ptr, uint8_t num, uint8_t size);
 #endif //

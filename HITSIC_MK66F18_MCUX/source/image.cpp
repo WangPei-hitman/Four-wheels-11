@@ -5,9 +5,17 @@
  *      Author: Skywalker
  */
 
-#include "image.h"
+#include <image.h>
 uint8_t* fullBuffer=NULL;
 int f[10 * CAMERA_H];//考察连通域联通性
+
+//position of point
+typedef struct position
+{
+    uint8_t x;
+    uint8_t y;
+}POS;
+
 //每个白条子属性
 typedef struct {
     uint8_t   left;//左边界
@@ -41,8 +49,37 @@ uint8_t left_line[CAMERA_H], right_line[CAMERA_H];//赛道的左右边界
 uint8_t mid_line[CAMERA_H];
 int all_connect_num = 0;//所有白条子数
 uint8_t top_road;//赛道最高处所在行数
-uint8_t threshold = 120;//阈值
-int front = 50,protect;
+uint8_t threshold = 110;//阈值
+int protect = 0;
+
+//void IMG_MENUSETUP(menu_list_t* List)
+//{
+//    static menu_list_t *TestList = MENU_ListConstruct("para_control", 20, List);
+//        assert(TestList);
+//         MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, TestList, "para_control", 0, 0));
+//          {
+//               MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL[0], "speedL",10 ,menuItem_data_global));
+//               MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR[0], "speedR",11 ,menuItem_data_global));
+//               MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL[2], "speedLmax",20 ,menuItem_data_global));
+//               MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR[2], "speedRmax",21 ,menuItem_data_global));
+//
+//               MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&front, "front",13 ,menuItem_data_global));
+//               MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&thro, "threshold",19 ,menuItem_data_global));
+//           }
+//
+//     static menu_list_t *pidList = MENU_ListConstruct("pidList", 20,List);
+//             assert(pidList);
+//             MENU_ListInsert(List, MENU_ItemConstruct(menuType,pidList , "PID_control", 0, 0));
+//             {
+//                 MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kp, "kp",14 ,menuItem_data_global));
+//                 MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kd, "kd",15 ,menuItem_data_global));
+//                 MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kt, "kt",22 ,menuItem_data_global));
+//             }
+//             MENU_ListInsert(List, MENU_ItemConstruct(variType, &myerror2, "error", 17,menuItem_data_ROFlag));
+//             MENU_ListInsert(List, MENU_ItemConstruct(variType, &midint, "mid", 18,menuItem_data_ROFlag));
+//             MENU_ListInsert(List, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
+//}
+
 
 ////////////////////////////////////////////
 //功能：二值化
@@ -377,16 +414,49 @@ void ordinary_two_line(void)
 //输出：
 //备注：zxecf
 ////////////////////////////////////////////
-//void boarder_fixer(uint8_t* line)
-//{
-//    uint8_t i;
-//    uint8_t j;
-//    uint8_t jud[2][CAMERA_H];
-//    for(i=119;i>=0;i++)
-//    {
-//        if((left_lint[i] == MISS || ))
-//    }
-//}
+void boarder_fixer(void)
+{
+    int i;
+    int j;
+    POS corner[4];
+    corner[0] = {left_line[0],0};
+    corner[1] = {right_line[0],0};
+    corner[2] = {left_line[119],119};
+    corner[3] = {right_line[119],119};
+    for(i=119;i>=0;i--)
+    {
+        if(left_line[i+1]-left_line[i]>=5)
+        {
+            corner[0] = {left_line[i+1],i};
+        }
+        if(right_line[i]-right_line[i+1]>=5)
+        {
+            corner[1] = {right_line[i+1],i};
+        }
+        if(left_line[i]-left_line[i+1]>=5)
+        {
+            corner[2] = {left_line[i],i+1};
+        }
+        if(right_line[i+1]-right_line[i]>=5)
+        {
+            corner[3] = {right_line[i],i+1};
+        }
+    }
+    int kl,kr;
+    kl = (corner[0].x-corner[2].x)/(corner[0].x-corner[2].x);
+    kr = (corner[1].x-corner[3].x)/(corner[1].x-corner[3].x);
+    for(i=119;i>=0;i--)
+    {
+        if(i>=corner[2].y&&i<=corner[0].y)
+        {
+            left_line[i] = kl*(i-corner[2].y)+corner[2].x;
+        }
+        if(i>=corner[3].y&&i<=corner[1].y)
+        {
+            right_line[i] = kr*(i-corner[3].y)+corner[3].x;
+        }
+    }
+}
 
 
 ////////////////////////////////////////////
@@ -440,7 +510,7 @@ void img_proction(void)
     {
         if(left_line[i]==MISS && right_line[i]==MISS)
         {
-            protect = 1;
+            protect++;
         }
     }
 }
@@ -461,6 +531,7 @@ void image_main()
     find_road();
     /*到此处为止，我们已经得到了属于赛道的结构体数组my_road[CAMERA_H]*/
     ordinary_two_line();
+    //boarder_fixer();
     get_mid_line();
     img_proction();
 
