@@ -85,13 +85,21 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 /** SCLIB_TEST */
 #include "sc_test.hpp"
 
+/**Team_FUC*/
+#include "image.h"
+#include"my_control.hpp"
+
+extern int front;
+extern int protect;//protection
 
 void MENU_DataSetUp(void);
+
 
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
 dmadvp_handle_t dmadvpHandle;
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
+void pic_tackle(void);
 
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
 inv::mpu6050_t imu_6050(imu_i2c);
@@ -101,6 +109,9 @@ graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
 
 void main(void)
 {
+    front =50;
+    myerror1 = 0;myerror2=0;kp=0.5;kd=0;
+
     /** 初始化阶段，关闭总中断 */
     HAL_EnterCritical();
 
@@ -137,37 +148,99 @@ void main(void)
     /** 菜单挂起 */
     MENU_Suspend();
     /** 初始化摄像头 */
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                                   //设置摄像头配置
+    CAM_ZF9V034_CfgWrite(&cameraCfg);                                   //写入配置
+
+    CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
+    DMADVP_Init(DMADVP0, &dmadvpCfg);
+
+    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
+    uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
+    uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
+
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
+    DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //TODO: 在这里初始化摄像头
     /** 初始化IMU */
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
     MENU_Resume();
+    thro=(int)threshold;
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
+    controlInit();
+
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
 
     /** 内置DSP函数测试 */
     float f = arm_sin_f32(0.6f);
-
-    while (true)
+    //pic_tackle();
+    while(true)
     {
         //TODO: 在这里添加车模保护代码
-    }
+    };
 }
 
 void MENU_DataSetUp(void)
 {
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EXAMPLE", 0, 0));
     //TODO: 在这里添加子菜单和菜单项
+    CTRL_MENUSETUP(menu_menuRoot);
+    MENU_ListInsert(menu_menuRoot,MENU_ItemConstruct(procType,pic_tackle,"start",0U,menuItem_proc_uiDisplay));
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
     //TODO: 补完本回调函数，双缓存采图。
-
-    //TODO: 添加图像处理（转向控制也可以写在这里）
+    dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*)userData;
+    status_t result = 0;
+    DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);
+    result = DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle);
+    //PRINTF("new full buffer: 0x%-8.8x = 0x%-8.8x\n", handle->fullBuffer.front(), handle->xferCfg.destAddr);
+    if(kStatus_Success != result)
+    {
+        DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
+        PRINTF("transfer stop! insufficent buffer\n");
+    }
+    DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);
+    image_main();
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
 }
+
+void pic_tackle(void)
+{
+//
+//
+//    while (true)
+//    {
+//        while (kStatus_Success != DMADVP_TransferGetFullBuffer(DMADVP0, &dmadvpHandle, &fullBuffer));
+//        image_main();
+//
+//        dispBuffer->Clear();
+//        const uint8_t imageTH = threshold;
+//        for (int i = 0; i < cameraCfg.imageRow; i += 2)
+//        {
+//            int16_t imageRow = i >> 1;//除以2,为了加速;
+//            int16_t dispRow = (imageRow / 8) + 1, dispShift = (imageRow % 8);
+//            for (int j = 0; j < cameraCfg.imageCol; j += 2)
+//            {
+//                int16_t dispCol = j >> 1;
+//                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j!= mid_line[i] && j!=94 && i!=front && i!=front+1)
+//                {
+//                    dispBuffer->SetPixelColor(dispCol, imageRow, 1);
+//                }
+//            }
+//        }
+//
+//      DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
+//      DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, fullBuffer);
+//    }
+
+}
+
 
 /**
  * 『灯千结的碎碎念』 Tips by C.M. :
