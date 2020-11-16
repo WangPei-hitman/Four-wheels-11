@@ -95,6 +95,7 @@ extern int front;
 extern int protect;                                   //protection
 
 void MENU_DataSetUp(void);
+void CAM_Init(void);
 
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
@@ -146,22 +147,7 @@ void main(void)
     /** 菜单挂起 */
     MENU_Suspend();
     /** 初始化摄像头 */
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                                   //设置摄像头配置
-    CAM_ZF9V034_CfgWrite(&cameraCfg);                                   //写入配置
-
-    CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
-    DMADVP_Init(DMADVP0, &dmadvpCfg);
-
-    dmadvp_handle_t dmadvpHandle;
-    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
-    uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
-    uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
-
-    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
-    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
-    DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    CAM_Init();
     //TODO: 在这里初始化摄像头
     /** 初始化IMU */
     //TODO: 在这里初始化IMU（MPU6050）
@@ -263,6 +249,24 @@ void pictureDisp(menu_keyOp_t* op)
         }
     }
     DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
+}
+
+void CAM_Init(void)
+{
+    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                                   //设置摄像头配置
+    CAM_ZF9V034_CfgWrite(&cameraCfg);                                   //写入配置
+
+    CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
+    DMADVP_Init(DMADVP0, &dmadvpCfg);
+
+    dmadvp_handle_t dmadvpHandle;
+    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
+    uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
+    uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
+
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
+    DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
 }
 
 /**
