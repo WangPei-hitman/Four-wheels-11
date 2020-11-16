@@ -533,7 +533,7 @@ void image_main()
     ordinary_two_line();
     //boarder_fixer();
     get_mid_line();
-    img_proction();
+    //img_proction();
 
 //    for (int i = NEAR_LINE; i >= FAR_LINE; i--)
 //        if (mid_line[i] != MISS)

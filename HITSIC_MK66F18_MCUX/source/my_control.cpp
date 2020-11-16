@@ -150,6 +150,27 @@ void directionCTRL(void)
 
 void motorSetSpeed(float speedL, float speedR)
 {
+    if(speedL>100.0f)
+    {
+        speedR-=speedL-100.0f;
+        speedL =100.0f;
+    }
+    if(speedL<-100.f)
+    {
+        speedR-=speedL+100.0f;
+        speedL = -100.0f;
+    }
+
+    if(speedR>100.0f)
+    {
+        speedL-=speedR-100.0f;
+        speedR =100.0f;
+    }
+    if(speedR<-100.f)
+    {
+        speedL-=speedR+100.0f;
+        speedR = -100.0f;
+    }
     if (speedR > 0)
     {
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, 0.0f);
@@ -157,7 +178,7 @@ void motorSetSpeed(float speedL, float speedR)
     }
     else
     {
-        SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, speedR);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, -speedR);
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_1, 20000U, 0.0f);
     }
     if (speedL > 0)
@@ -168,6 +189,6 @@ void motorSetSpeed(float speedL, float speedR)
     else
     {
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_2, 20000U, 0.0f);
-        SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, speedL);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, -speedL);
     }
 }
