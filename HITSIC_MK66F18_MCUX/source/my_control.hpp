@@ -8,14 +8,23 @@
 #ifndef MY_CONTROL_HPP_
 #define MY_CONTROL_HPP_
 
+#include "hitsic_common.h"
+#include "inc_stdlib.hpp"
+
+/** HITSIC_Module_APP */
 #include "app_menu.hpp"
+
+/** HITSIC_Module_SYS */
+
+#include "sys_pitmgr.hpp"
+#include "sys_extint.hpp"
+
+/** HITSIC_Module_LIB */
+#include "lib_pidctrl.h"
 
 #include "sc_ftm.h"
 #include "image.h"
-#include "sys_pitmgr.hpp"
-#include "sys_extint.hpp"
-#include "hitsic_common.h"
-#include "lib_pidctrl.h"
+
 
 extern float servo_ctrl;
 extern int myerror1 ,myerror2;
@@ -30,5 +39,7 @@ void controlInit(void);
 void motorCTRL (void);
 void servoCTRL (void);
 void directionCTRL(void);
+void motorSetSpeed(float speedL,float speedR);
+
 
 #endif /* MY_CONTROL_HPP_ */

@@ -89,16 +89,18 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 #include "image.h"
 #include"my_control.hpp"
 
+
+
 extern int front;
-extern int protect;//protection
+extern int protect;                                   //protection
 
 void MENU_DataSetUp(void);
-
 
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
+void pictureDisp(menu_keyOp_t* op);
 
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
 inv::mpu6050_t imu_6050(imu_i2c);
@@ -165,7 +167,7 @@ void main(void)
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
     MENU_Resume();
-    thro=(int)threshold;
+    thro = (int) threshold;
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
     controlInit();
@@ -176,8 +178,40 @@ void main(void)
     /** 内置DSP函数测试 */
     float f = arm_sin_f32(0.6f);
     //pic_tackle();
-    while(true)
+    while (true)
     {
+        //TODO: 在这里添加屏幕显示代码
+        uint8_t menuSuspend_flag = 0;
+        while (0U==GPIO_PinRead(GPIOA,9))//检测PTA9为低电平
+        {
+            if(0 == menuSuspend_flag)
+            {
+                MENU_Suspend();
+                menuSuspend_flag = 1;
+            }
+            disp_ssd1306_frameBuffer_t *dispBuffer =new disp_ssd1306_frameBuffer_t;
+            dispBuffer->Clear();
+            const uint8_t imageTH = threshold;
+            for (int i = 0; i < cameraCfg.imageRow; i += 2)
+            {
+                int16_t imageRow = i >> 1;    //除以2,为了加速;
+                int16_t dispRow = (imageRow / 8) + 1, dispShift = (imageRow % 8);
+                for (int j = 0; j < cameraCfg.imageCol; j += 2)
+                {
+                    int16_t dispCol = j >> 1;
+                    if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j != mid_line[i] && j != 94)
+                    {
+                        dispBuffer->SetPixelColor(dispCol, imageRow, 1);
+                    }
+                }
+            }
+            DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
+        }
+        if(1==menuSuspend_flag)
+        {
+            MENU_Resume();
+            menuSuspend_flag=0;
+        }
         //TODO: 在这里添加车模保护代码
     };
 }
@@ -186,28 +220,49 @@ void MENU_DataSetUp(void)
 {
     //TODO: 在这里添加子菜单和菜单项
     CTRL_MENUSETUP(menu_menuRoot);
-    //MENU_ListInsert(menu_menuRoot,MENU_ItemConstruct(procType,pic_tackle,"start",0U,menuItem_proc_uiDisplay));
+    //MENU_ListInsert(menu_menuRoot,MENU_ItemConstruct(procType,pictureDisp,"start",0U,menuItem_proc_uiDisplay));
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
     //TODO: 补完本回调函数，双缓存采图。
-    dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*)userData;
+    dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*) userData;
     status_t result = 0;
     DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);
     result = DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle);
     //PRINTF("new full buffer: 0x%-8.8x = 0x%-8.8x\n", handle->fullBuffer.front(), handle->xferCfg.destAddr);
-    if(kStatus_Success != result)
+    if (kStatus_Success != result)
     {
         DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
         PRINTF("transfer stop! insufficent buffer\n");
     }
-    if(transferDone==true)
+    if (transferDone == true)
     {
-    DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);
-    image_main();
-    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
+        DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);
+        image_main();
+        DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
     }
+}
+
+void pictureDisp(menu_keyOp_t* op)
+{
+    disp_ssd1306_frameBuffer_t *dispBuffer = new disp_ssd1306_frameBuffer_t;
+    dispBuffer->Clear();
+    const uint8_t imageTH = threshold;
+    for (int i = 0; i < cameraCfg.imageRow; i += 2)
+    {
+        int16_t imageRow = i >> 1;    //除以2,为了加速;
+        int16_t dispRow = (imageRow / 8) + 1, dispShift = (imageRow % 8);
+        for (int j = 0; j < cameraCfg.imageCol; j += 2)
+        {
+            int16_t dispCol = j >> 1;
+            if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j != mid_line[i] && j != 94)
+            {
+                dispBuffer->SetPixelColor(dispCol, imageRow, 1);
+            }
+        }
+    }
+    DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
 }
 
 /**
@@ -226,5 +281,4 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
  *      中是十分危险的，可能造成车模进入“原地陀螺旋转”的状态，极易损坏车模或
  *      导致人员受伤。在设置电机占空比时务必做好异常保护。
  */
-
 

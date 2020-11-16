@@ -9,7 +9,7 @@
 
 #define EPS 10
 
-
+/*中断任务句柄*/
 pitMgr_t* motorcontrol =nullptr;
 pitMgr_t* servocontrol =nullptr;
 pitMgr_t* directiontask=nullptr;
@@ -52,6 +52,8 @@ void CTRL_MENUSETUP(menu_list_t* List)
                  MENU_ListInsert(List, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
 }
 
+
+/**控制环初始化*/
 void controlInit(void)
 {
     motorcontrol =  pitMgr_t::insert(6U,2U,motorCTRL,pitMgr_t::enable);
@@ -106,12 +108,6 @@ void motorCTRL (void)
               SCFTM_PWM_Change(FTM0,kFTM_Chnl_3,20000U,0.0f);
           }
        }
-
-//    SCFTM_PWM_Change(FTM0,kFTM_Chnl_0,20000U,0.0f);
-//    SCFTM_PWM_Change(FTM0,kFTM_Chnl_1,20000U,speedR);
-//
-//    SCFTM_PWM_Change(FTM0,kFTM_Chnl_2,20000U,speedL);
-//    SCFTM_PWM_Change(FTM0,kFTM_Chnl_3,20000U,0.0f);
     }
 }
 
@@ -151,3 +147,27 @@ void directionCTRL(void)
     myerror1 =myerror2;
 }
 
+
+void motorSetSpeed(float speedL, float speedR)
+{
+    if (speedR > 0)
+    {
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, 0.0f);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_1, 20000U, speedR);
+    }
+    else
+    {
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, speedR);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_1, 20000U, 0.0f);
+    }
+    if (speedL > 0)
+    {
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_2, 20000U, speedL);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, 0.0f);
+    }
+    else
+    {
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_2, 20000U, 0.0f);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, speedL);
+    }
+}
