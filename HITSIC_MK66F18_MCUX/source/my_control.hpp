@@ -26,13 +26,15 @@
 #include "image.h"
 
 
-extern float servo_ctrl;
+extern float servo_ctrlOutput;
 extern int myerror1 ,myerror2;
 extern float kp,kd;
 extern int front;
 extern int midint,thro;
 extern float kt;
 extern float speedL[3],speedR[3];
+extern uint32_t error;
+extern pidCtrl_t dirPID;
 
 void CTRL_MENUSETUP(menu_list_t*);
 void controlInit(void);

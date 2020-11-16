@@ -23,6 +23,7 @@ extern int protect;//protection
 float speedL[3]={0.0f,0.0f,100.0f},speedR[3]={0.0f,0.0f,100.0f};
 float kt=0.0f;
 
+uint32_t error = 0;
 
 void CTRL_MENUSETUP(menu_list_t* List)
 {
@@ -43,13 +44,13 @@ void CTRL_MENUSETUP(menu_list_t* List)
                  assert(pidList);
                  MENU_ListInsert(List, MENU_ItemConstruct(menuType,pidList , "PID_control", 0, 0));
                  {
-                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kp, "kp",14 ,menuItem_data_global));
-                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kd, "kd",15 ,menuItem_data_global));
-                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&kt, "kt",22 ,menuItem_data_global));
+                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&dirPID.kp, "kp",14 ,menuItem_data_global));
+                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&dirPID.kd, "kd",15 ,menuItem_data_global));
+                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&dirPID.ki, "ki",22 ,menuItem_data_global));
                  }
-                 MENU_ListInsert(List, MENU_ItemConstruct(variType, &myerror2, "error", 17,menuItem_data_ROFlag));
-                 MENU_ListInsert(List, MENU_ItemConstruct(variType, &midint, "mid", 18,menuItem_data_ROFlag));
-                 MENU_ListInsert(List, MENU_ItemConstruct(varfType,&servo_ctrl, "servo",12 ,menuItem_data_global));
+                 MENU_ListInsert(List, MENU_ItemConstruct(varfType, &dirPID.errCurr, "error", 17,menuItem_data_ROFlag|menuItem_data_NoSave|menuItem_data_NoLoad));
+                 MENU_ListInsert(List, MENU_ItemConstruct(variType, &midint, "mid", 18,menuItem_data_ROFlag|menuItem_data_NoSave|menuItem_data_NoLoad));
+                 MENU_ListInsert(List, MENU_ItemConstruct(varfType,&servo_ctrlOutput, "servo",12 ,menuItem_data_ROFlag|menuItem_data_NoSave|menuItem_data_NoLoad));
 }
 
 
@@ -58,15 +59,10 @@ void controlInit(void)
 {
     motorcontrol =  pitMgr_t::insert(6U,2U,motorCTRL,pitMgr_t::enable);
     assert(motorcontrol);
-//    servocontrol = pitMgr_t::insert(20U,2U,servoCTRL,pitMgr_t::enable);
-//    assert(servocontrol);
+
     directiontask = pitMgr_t::insert(20U,3U,directionCTRL,pitMgr_t::enable);
     assert(directiontask);
 
-//    PORT_SetPinInterruptConfig(PORTA, 9U, kPORT_InterruptRisingEdge);
-//    extInt_t::insert(PORTA, 9U,MENU_Suspend);
-//    PORT_SetPinInterruptConfig(PORTA, 11U, kPORT_InterruptRisingEdge);
-//    extInt_t::insert(PORTA, 9U,MENU_Resume);
 }
 
 void motorCTRL (void)
@@ -112,39 +108,23 @@ void motorCTRL (void)
 }
 
 
-void servoCTRL (void)
-{
-     SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
-}
+pidCtrl_t dirPID =
+{ .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
 
+float servo_ctrlOutput =7.5f;
 
 void directionCTRL(void)
 {
     midint =(int)(mid_line[front]);
-    myerror2 = midint-94;
+    servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID, (float)(midint-94));
+    if(255==midint)
+        servo_ctrlOutput=7.5f;
+    else if(servo_ctrlOutput>8.5f)
+        servo_ctrlOutput = 8.5f;
+    else if(servo_ctrlOutput<6.6f)
+        servo_ctrlOutput = 6.6f;
 
-    if(midint==161)
-    {
-        servo_ctrl = 7.5f;
-    }
-    else
-    {
-        servo_ctrl=7.5f-0.01*(kp*myerror2*1.0+kd*(myerror2*1.0-myerror1*1.0));
-    }
-    if(servo_ctrl>8.5f)
-    {
-        servo_ctrl = 8.5f;
-        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,8.5f);
-    }
-    else if(servo_ctrl<6.6f)
-    {
-        servo_ctrl=6.6f;
-        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,6.6f);
-    }
-    else
-        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrl);
-
-    myerror1 =myerror2;
+        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrlOutput);
 }
 
 
