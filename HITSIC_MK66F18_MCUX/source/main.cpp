@@ -97,9 +97,8 @@ void MENU_DataSetUp(void);
 
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
-dmadvp_handle_t dmadvpHandle;
+
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
-void pic_tackle(void);
 
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
 inv::mpu6050_t imu_6050(imu_i2c);
@@ -109,9 +108,6 @@ graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
 
 void main(void)
 {
-    front =50;
-    myerror1 = 0;myerror2=0;kp=0.5;kd=0;
-
     /** 初始化阶段，关闭总中断 */
     HAL_EnterCritical();
 
@@ -155,6 +151,7 @@ void main(void)
     CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
     DMADVP_Init(DMADVP0, &dmadvpCfg);
 
+    dmadvp_handle_t dmadvpHandle;
     DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
     uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
     uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
@@ -189,7 +186,7 @@ void MENU_DataSetUp(void)
 {
     //TODO: 在这里添加子菜单和菜单项
     CTRL_MENUSETUP(menu_menuRoot);
-    MENU_ListInsert(menu_menuRoot,MENU_ItemConstruct(procType,pic_tackle,"start",0U,menuItem_proc_uiDisplay));
+    //MENU_ListInsert(menu_menuRoot,MENU_ItemConstruct(procType,pic_tackle,"start",0U,menuItem_proc_uiDisplay));
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
@@ -205,42 +202,13 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
         DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
         PRINTF("transfer stop! insufficent buffer\n");
     }
+    if(transferDone==true)
+    {
     DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);
     image_main();
     DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
+    }
 }
-
-void pic_tackle(void)
-{
-//
-//
-//    while (true)
-//    {
-//        while (kStatus_Success != DMADVP_TransferGetFullBuffer(DMADVP0, &dmadvpHandle, &fullBuffer));
-//        image_main();
-//
-//        dispBuffer->Clear();
-//        const uint8_t imageTH = threshold;
-//        for (int i = 0; i < cameraCfg.imageRow; i += 2)
-//        {
-//            int16_t imageRow = i >> 1;//除以2,为了加速;
-//            int16_t dispRow = (imageRow / 8) + 1, dispShift = (imageRow % 8);
-//            for (int j = 0; j < cameraCfg.imageCol; j += 2)
-//            {
-//                int16_t dispCol = j >> 1;
-//                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j!= mid_line[i] && j!=94 && i!=front && i!=front+1)
-//                {
-//                    dispBuffer->SetPixelColor(dispCol, imageRow, 1);
-//                }
-//            }
-//        }
-//
-//      DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
-//      DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, fullBuffer);
-//    }
-
-}
-
 
 /**
  * 『灯千结的碎碎念』 Tips by C.M. :

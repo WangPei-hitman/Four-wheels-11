@@ -127,9 +127,14 @@ void directionCTRL(void)
     midint =(int)(mid_line[front]);
     myerror2 = midint-94;
 
-    if(midint!=255)
+    if(midint==161)
+    {
+        servo_ctrl = 7.5f;
+    }
+    else
+    {
         servo_ctrl=7.5f-0.01*(kp*myerror2*1.0+kd*(myerror2*1.0-myerror1*1.0));
-
+    }
     if(servo_ctrl>8.5f)
     {
         servo_ctrl = 8.5f;

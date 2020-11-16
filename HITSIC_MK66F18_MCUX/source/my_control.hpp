@@ -15,7 +15,7 @@
 #include "sys_pitmgr.hpp"
 #include "sys_extint.hpp"
 #include "hitsic_common.h"
-
+#include "lib_pidctrl.h"
 
 extern float servo_ctrl;
 extern int myerror1 ,myerror2;
