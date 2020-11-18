@@ -162,7 +162,7 @@ void main(void)
     CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
     DMADVP_Init(DMADVP0, &dmadvpCfg);
     dmadvp_handle_t dmadvpHandle;
-    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_UnitTestDmaCallback);
+    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
     uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
     //uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
     uint8_t *fullBuffer = NULL;
@@ -203,6 +203,18 @@ void MENU_DataSetUp(void)
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
+    dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*)userData;
+     status_t result = 0;
+
+     DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);
+
+//     result = DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle);
+//     //PRINTF("new full buffer: 0x%-8.8x = 0x%-8.8x\n", handle->fullBuffer.front(), handle->xferCfg.destAddr);
+//     if(kStatus_Success != result)
+//     {
+//         DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
+//         PRINTF("transfer stop! insufficent buffer\n");
+//     }
 
 }
 
