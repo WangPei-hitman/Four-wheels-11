@@ -156,11 +156,11 @@ void main(void)
     dmadvp_handle_t dmadvpHandle;
     DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
     uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
-   // uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
+    uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
   //  uint8_t *imageBuffer2 = new uint8_t[DMADVP0->imgSize];
 
     DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
-   // DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
    // DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer2);
     DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -191,8 +191,7 @@ void main(void)
                 MENU_Suspend();
                 menuSuspend_flag = 1;
             }
-            disp_ssd1306_frameBuffer_t *dispBuffer =new disp_ssd1306_frameBuffer_t;
-            dispBuffer->Clear();
+            dispBuffer.Clear();
             const uint8_t imageTH = threshold;
             for (int i = 0; i < cameraCfg.imageRow; i += 2)
             {
@@ -203,11 +202,11 @@ void main(void)
                     int16_t dispCol = j >> 1;
                     if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j != mid_line[i] && j != 94)
                     {
-                        dispBuffer->SetPixelColor(dispCol, imageRow, 1);
+                        dispBuffer.SetPixelColor(dispCol, imageRow, 1);
                     }
                 }
             }
-            DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
+            DISP_SSD1306_BufferUpload((uint8_t*) &dispBuffer);
         }
         if(1==menuSuspend_flag)
         {
