@@ -20,7 +20,7 @@ float kp=0,kd=0;
 int front = 50;
 int midint,thro;
 extern int protect;//protection
-float speedL[3]={0.0f,0.0f,100.0f},speedR[3]={0.0f,0.0f,100.0f};
+float speedL[3]={0.0f,-100.0f,100.0f},speedR[3]={0.0f,-100.0f,100.0f};
 float kt=0.0f;
 
 uint32_t error = 0;
@@ -31,10 +31,8 @@ void CTRL_MENUSETUP(menu_list_t* List)
             assert(TestList);
              MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, TestList, "para_control", 0, 0));
               {
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL[0], "speedL",10 ,menuItem_data_global));
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR[0], "speedR",11 ,menuItem_data_global));
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL[2], "speedLmax",20 ,menuItem_data_global));
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR[2], "speedRmax",21 ,menuItem_data_global));
+                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL[0], "speedL",10 ,menuItem_data_global|menuItem_dataExt_HasMinMax));
+                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR[0], "speedR",11 ,menuItem_data_global|menuItem_dataExt_HasMinMax));
 
                    MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&front, "front",13 ,menuItem_data_global));
                    MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&thro, "threshold",19 ,menuItem_data_global));
@@ -64,6 +62,8 @@ void controlInit(void)
     assert(directiontask);
 
 }
+
+
 
 void motorCTRL (void)
 {
