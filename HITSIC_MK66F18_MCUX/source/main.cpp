@@ -74,6 +74,7 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 
 #include "sc_adc.h"
 #include "sc_ftm.h"
+#include "sc_host.h"
 
 /** HITSIC_Module_TEST */
 #include "drv_cam_zf9v034_test.hpp"
@@ -85,12 +86,10 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 /** SCLIB_TEST */
 #include "sc_test.hpp"
 
+/**TEAM 15th Dev**/
+
 
 void MENU_DataSetUp(void);
-
-cam_zf9v034_configPacket_t cameraCfg;
-dmadvp_config_t dmadvpCfg;
-dmadvp_handle_t dmadvpHandle;
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
 
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
@@ -98,6 +97,14 @@ inv::mpu6050_t imu_6050(imu_i2c);
 
 disp_ssd1306_frameBuffer_t dispBuffer;
 graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
+extern float Motor_L;
+extern float Motor_R;
+extern float Servo;
+extern float Servo_kp;
+extern float Servo_kd;
+extern float Servo_ki;
+extern uint32_t threshold;
+extern uint32_t preview;
 
 void main(void)
 {
@@ -124,6 +131,7 @@ void main(void)
     DISP_SSD1306_Init();
     extern const uint8_t DISP_image_100thAnniversary[8][128];
     DISP_SSD1306_BufferUpload((uint8_t*) DISP_image_100thAnniversary);
+    DISP_SSD1306_delay_ms(1000);
     /** 初始化ftfx_Flash */
     FLASH_SimpleInit();
     /** 初始化PIT中断管理器 */
@@ -137,36 +145,65 @@ void main(void)
     /** 菜单挂起 */
     MENU_Suspend();
     /** 初始化摄像头 */
-    //TODO: 在这里初始化摄像头
+    //
     /** 初始化IMU */
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
-    MENU_Resume();
+    //MENU_Resume();
     /** 控制环初始化 */
-    //TODO: 在这里初始化控制环
+
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
-
-    /** 内置DSP函数测试 */
-    float f = arm_sin_f32(0.6f);
-
-    while (true)
+    //初始化部分：
+    cam_zf9v034_configPacket_t cameraCfg;
+    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                                   //设置摄像头配置
+    CAM_ZF9V034_CfgWrite(&cameraCfg);                                   //写入配置
+    dmadvp_config_t dmadvpCfg;
+    CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
+    DMADVP_Init(DMADVP0, &dmadvpCfg);
+    dmadvp_handle_t dmadvpHandle;
+    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_UnitTestDmaCallback);
+    uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
+    //uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
+    uint8_t *fullBuffer = NULL;
+    disp_ssd1306_frameBuffer_t *dispBuffer = new disp_ssd1306_frameBuffer_t;
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
+    //DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
+    DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
+    while(true)
     {
-        //TODO: 在这里添加车模保护代码
+        while (kStatus_Success != DMADVP_TransferGetFullBuffer(DMADVP0, &dmadvpHandle, &fullBuffer));
+        SCHOST_ImgUpload(fullBuffer, 120, 188);
+        dispBuffer->Clear();
+        const uint8_t imageTH = 160;
+        for (int i = 0; i < cameraCfg.imageRow; i += 2)
+        {
+            int16_t imageRow = i >> 1;//除以2 为了加速;
+            int16_t dispRow = (imageRow / 8) + 1, dispShift = (imageRow % 8);
+            for (int j = 0; j < cameraCfg.imageCol; j += 2)
+            {
+                int16_t dispCol = j >> 1;
+                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH)
+                {
+                    dispBuffer->SetPixelColor(dispCol, imageRow, 1);
+                }
+            }
+        }
+        DISP_SSD1306_BufferUpload((uint8_t*) dispBuffer);
+        DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, fullBuffer);
+        DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
+
     }
 }
-
 void MENU_DataSetUp(void)
 {
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EXAMPLE", 0, 0));
-    //TODO: 在这里添加子菜单和菜单项
+
+
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
-    //TODO: 补完本回调函数，双缓存采图。
 
-    //TODO: 添加图像处理（转向控制也可以写在这里）
 }
 
 /**
@@ -185,5 +222,4 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
  *      中是十分危险的，可能造成车模进入“原地陀螺旋转”的状态，极易损坏车模或
  *      导致人员受伤。在设置电机占空比时务必做好异常保护。
  */
-
 
