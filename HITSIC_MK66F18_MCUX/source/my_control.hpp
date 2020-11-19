@@ -24,7 +24,7 @@
 
 #include "sc_ftm.h"
 #include "image.h"
-
+#include "my_elecmag.hpp"
 
 extern float servo_ctrlOutput;
 extern int myerror1 ,myerror2;
@@ -38,9 +38,9 @@ extern pidCtrl_t dirPID;
 
 void CTRL_MENUSETUP(menu_list_t*);
 void controlInit(void);
-void motorCTRL (void);
-void servoCTRL (void);
-void directionCTRL(void);
+void motorCTRL (void*);
+void servoCTRL (void*);
+void directionCTRL(void*);
 void motorSetSpeed(float speedL,float speedR);
 
 

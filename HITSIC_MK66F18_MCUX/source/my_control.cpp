@@ -11,7 +11,7 @@
 
 /*中断任务句柄*/
 pitMgr_t* motorcontrol =nullptr;
-pitMgr_t* servocontrol =nullptr;
+pitMgr_t* EMAcolloction =nullptr;
 pitMgr_t* directiontask=nullptr;
 
 float servo_ctrl=7.5f;
@@ -61,11 +61,12 @@ void controlInit(void)
     directiontask = pitMgr_t::insert(20U,3U,directionCTRL,pitMgr_t::enable);
     assert(directiontask);
 
+    EMAcolloction = pitMgr_t::insert(20U,4U,GetEMASignalHandLer,pitMgr_t::enable);
 }
 
 
 
-void motorCTRL (void)
+void motorCTRL (void*)
 {
         if(protect>=5)
         {
@@ -113,7 +114,7 @@ pidCtrl_t dirPID =
 
 float servo_ctrlOutput =7.5f;
 
-void directionCTRL(void)
+void directionCTRL(void*)
 {
     midint =(int)(mid_line[front]);
     servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID, (float)(midint-94));

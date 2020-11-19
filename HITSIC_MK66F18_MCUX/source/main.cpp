@@ -88,6 +88,7 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 /**Team_FUC*/
 #include "image.h"
 #include"my_control.hpp"
+#include "my_elecmag.hpp"
 
 
 
@@ -221,6 +222,7 @@ void MENU_DataSetUp(void)
 {
     //TODO: 在这里添加子菜单和菜单项
     CTRL_MENUSETUP(menu_menuRoot);
+    electronMenuSetup(menu_menuRoot);
     //MENU_ListInsert(menu_menuRoot,MENU_ItemConstruct(procType,pictureDisp,"start",0U,menuItem_proc_uiDisplay));
 }
 
