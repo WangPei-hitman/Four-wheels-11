@@ -27,7 +27,6 @@
 
 
 extern float servo_ctrlOutput;
-extern int myerror1 ,myerror2;
 extern float kp,kd;
 extern int front;
 extern int midint,thro;
