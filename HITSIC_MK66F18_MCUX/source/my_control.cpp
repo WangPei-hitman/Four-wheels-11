@@ -14,10 +14,9 @@ pitMgr_t* motorcontrol =nullptr;
 pitMgr_t* directiontask=nullptr;
 
 float servo_ctrl=7.5f;
-//int myerror1 = 0,myerror2=0;
 float kp=0,kd=0;
-int front = 50;
-int midint,thro;
+int front = 50;//前瞻
+int thro;//摄像头阈值
 extern int protect;//protection
 
 float kt=0.0f;
@@ -27,26 +26,26 @@ uint32_t error = 0;
 void CTRL_MENUSETUP(menu_list_t* List)
 {
     static menu_list_t *TestList = MENU_ListConstruct("para_control", 20, List);
-            assert(TestList);
-             MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, TestList, "para_control", 0, 0));
-              {
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedL[0], "speedL",10 ,menuItem_data_global|menuItem_dataExt_HasMinMax));
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(varfType,&speedR[0], "speedR",11 ,menuItem_data_global|menuItem_dataExt_HasMinMax));
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&front, "front",13 ,menuItem_data_global));
-                   MENU_ListInsert(TestList, MENU_ItemConstruct(variType,&thro, "threshold",19 ,menuItem_data_global));
-               }
+    assert(TestList);
+    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, TestList, "para_control", 0, 0));
+    {
+        MENU_ListInsert(TestList, MENU_ItemConstruct(varfType, &speedL[0], "speedL", 1, menuItem_data_region | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(TestList, MENU_ItemConstruct(varfType, &speedR[0], "speedR", 2, menuItem_data_region | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(TestList, MENU_ItemConstruct(varfType, &servo_ctrlOutput, "servo", 0U, menuItem_data_NoSave | menuItem_data_NoLoad));
+        MENU_ListInsert(TestList, MENU_ItemConstruct(variType, &front, "front", 6, menuItem_data_region));
+    }
 
-     static menu_list_t *pidList = MENU_ListConstruct("pidList", 20,List);
-                 assert(pidList);
-                 MENU_ListInsert(List, MENU_ItemConstruct(menuType,pidList , "PID_control", 0, 0));
-                 {
-                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&dirPID.kp, "kp",14 ,menuItem_data_global));
-                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&dirPID.kd, "kd",15 ,menuItem_data_global));
-                     MENU_ListInsert(pidList, MENU_ItemConstruct(varfType,&dirPID.ki, "ki",22 ,menuItem_data_global));
-                 }
-                 MENU_ListInsert(List, MENU_ItemConstruct(varfType, &dirPID.errCurr, "error", 17,menuItem_data_ROFlag|menuItem_data_NoSave|menuItem_data_NoLoad));
-                 MENU_ListInsert(List, MENU_ItemConstruct(variType, &midint, "mid", 18,menuItem_data_ROFlag|menuItem_data_NoSave|menuItem_data_NoLoad));
-                 MENU_ListInsert(List, MENU_ItemConstruct(varfType,&servo_ctrlOutput, "servo",12 ,menuItem_data_ROFlag|menuItem_data_NoSave|menuItem_data_NoLoad));
+    static menu_list_t *pidList = MENU_ListConstruct("pidList", 20, List);
+    assert(pidList);
+    MENU_ListInsert(List, MENU_ItemConstruct(menuType, pidList, "PID_control", 0, 0));
+    {
+        MENU_ListInsert(pidList, MENU_ItemConstruct(varfType, &dirPID.kp, "kp",3, menuItem_data_region));
+        MENU_ListInsert(pidList, MENU_ItemConstruct(varfType, &dirPID.kd, "kd", 4, menuItem_data_region));
+        MENU_ListInsert(pidList, MENU_ItemConstruct(varfType, &dirPID.ki, "ki", 5, menuItem_data_region));
+    }
+    MENU_ListInsert(List, MENU_ItemConstruct(varfType, &dirPID.errCurr, "error_pic",0U, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+
+    MENU_ListInsert(List, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
 }
 
 
@@ -61,9 +60,8 @@ void controlInit(void)
 
 }
 
-
 float speedL[3]={0.0f,-100.0f,100.0f},speedR[3]={0.0f,-100.0f,100.0f};
-void motorCTRL (void)
+void motorCTRL (void*)
 {
     if (protect >= 5)
     {
@@ -95,11 +93,10 @@ pidCtrl_t dirPID =
 
 float servo_ctrlOutput =7.5f;
 
-void directionCTRL(void)
+void directionCTRL(void*)
 {
-    midint =(int)(mid_line[front]);
-    servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID, (float)(midint-94));
-    if(255==midint)
+    servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID, (float)(mid_line[front]-94));
+    if(255==mid_line[front])
     { servo_ctrlOutput=7.5f;}
     else if(servo_ctrlOutput>8.5f)
     {  servo_ctrlOutput = 8.5f;}
