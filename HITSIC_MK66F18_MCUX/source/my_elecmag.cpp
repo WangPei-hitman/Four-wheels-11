@@ -13,6 +13,7 @@ uint32_t adc[8] = {0,0,0,0,0,0,0,0};
 
 void electronMenuSetup(menu_list_t* root)
 {
+    MENU_ListInsert(root, MENU_ItemConstruct(nullType,0U, "EMA",0,0));
     static menu_list_t *List1 = MENU_ListConstruct("EMA_parameter", 20, root);
                 assert(List1);
                  MENU_ListInsert(root, MENU_ItemConstruct(menuType, List1, "EMA_parameter", 0, 0));

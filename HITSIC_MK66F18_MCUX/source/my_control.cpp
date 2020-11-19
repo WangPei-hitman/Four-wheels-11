@@ -12,6 +12,8 @@
 /*中断任务句柄*/
 pitMgr_t* motorcontrol =nullptr;
 pitMgr_t* directiontask=nullptr;
+pitMgr_t* EMAcolloction=nullptr;
+
 
 float servo_ctrl=7.5f;
 float kp=0,kd=0;
@@ -25,6 +27,7 @@ uint32_t error = 0;
 
 void CTRL_MENUSETUP(menu_list_t* List)
 {
+    MENU_ListInsert(List, MENU_ItemConstruct(nullType,0U, "CTRL",0,0));
     static menu_list_t *TestList = MENU_ListConstruct("para_control", 20, List);
     assert(TestList);
     MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, TestList, "para_control", 0, 0));
@@ -59,6 +62,7 @@ void controlInit(void)
     assert(directiontask);
 
     EMAcolloction = pitMgr_t::insert(20U,4U,GetEMASignalHandLer,pitMgr_t::enable);
+    assert(EMAcolloction);
 }
 
 float speedL[3]={0.0f,-100.0f,100.0f},speedR[3]={0.0f,-100.0f,100.0f};
