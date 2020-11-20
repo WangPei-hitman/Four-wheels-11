@@ -189,9 +189,10 @@ void main(void)
 void MENU_DataSetUp(void)
 {
     //TODO: 在这里添加子菜单和菜单项
-    CTRL_MENUSETUP(menu_menuRoot);
     electronMenuSetup(menu_menuRoot);
-    //MENU_ListInsert(menu_menuRoot,MENU_ItemConstruct(procType,pictureDisp,"start",0U,menuItem_proc_uiDisplay));
+    CTRL_MENUSETUP(menu_menuRoot);
+
+
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)

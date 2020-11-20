@@ -8,6 +8,7 @@
 #include"my_control.hpp"
 
 #define EPS 10
+#define DRP(x,y)  ((x-y)/(x*y))
 
 /*中断任务句柄*/
 pitMgr_t* motorcontrol =nullptr;
@@ -15,40 +16,61 @@ pitMgr_t* directiontask=nullptr;
 pitMgr_t* EMAcolloction=nullptr;
 
 
-float servo_ctrl=7.5f;
-float kp=0,kd=0;
+
+
 int front = 50;//前瞻
 int thro;//摄像头阈值
-extern int protect;//protection
 
-float kt=0.0f;
 
-uint32_t error = 0;
+
+
+
 
 void CTRL_MENUSETUP(menu_list_t* List)
 {
-    MENU_ListInsert(List, MENU_ItemConstruct(nullType,0U, "CTRL",0,0));
-    static menu_list_t *TestList = MENU_ListConstruct("para_control", 20, List);
-    assert(TestList);
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(menuType, TestList, "para_control", 0, 0));
+    static menu_list_t *picture = MENU_ListConstruct("picture", 20, List);
+    assert(picture);
+    MENU_ListInsert(List, MENU_ItemConstruct(menuType, picture, "picture", 0, 0));
     {
-        MENU_ListInsert(TestList, MENU_ItemConstruct(varfType, &speedL[0], "speedL", 1, menuItem_data_region | menuItem_dataExt_HasMinMax));
-        MENU_ListInsert(TestList, MENU_ItemConstruct(varfType, &speedR[0], "speedR", 2, menuItem_data_region | menuItem_dataExt_HasMinMax));
-        MENU_ListInsert(TestList, MENU_ItemConstruct(varfType, &servo_ctrlOutput, "servo", 0U, menuItem_data_NoSave | menuItem_data_NoLoad));
-        MENU_ListInsert(TestList, MENU_ItemConstruct(variType, &front, "front", 6, menuItem_data_region));
+        static menu_list_t *Low = MENU_ListConstruct("LOW", 20, picture);
+        assert(Low);
+        MENU_ListInsert(picture, MENU_ItemConstruct(menuType, Low, "LOW", 0, 0));
+        {
+            static menu_list_t *pidcontrol_low = MENU_ListConstruct("PID", 20, picture);
+            assert(pidcontrol_low);
+            MENU_ListInsert(Low, MENU_ItemConstruct(menuType, pidcontrol_low, "PID", 0, 0));
+            {
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &dirPID_PIC.kp, "kp", 3, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &dirPID_PIC.kd, "kd", 4, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &dirPID_PIC.ki, "ki", 5, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &front, "front", 6, menuItem_data_region));
+            }
+            MENU_ListInsert(Low, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
+            MENU_ListInsert(Low,
+                    MENU_ItemConstruct(varfType, &dirPID_PIC.errCurr, "error_pic", 0U, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+            MENU_ListInsert(Low, MENU_ItemConstruct(procType, StartPicture, "StartPicture", 0U, 0U));
+        }
     }
-
-    static menu_list_t *pidList = MENU_ListConstruct("pidList", 20, List);
-    assert(pidList);
-    MENU_ListInsert(List, MENU_ItemConstruct(menuType, pidList, "PID_control", 0, 0));
+    static menu_list_t *basicpara = MENU_ListConstruct("basic_para", 20, List);
+    assert(basicpara);
+    MENU_ListInsert(List, MENU_ItemConstruct(menuType, basicpara, "basic_para", 0, 0));
     {
-        MENU_ListInsert(pidList, MENU_ItemConstruct(varfType, &dirPID.kp, "kp",3, menuItem_data_region));
-        MENU_ListInsert(pidList, MENU_ItemConstruct(varfType, &dirPID.kd, "kd", 4, menuItem_data_region));
-        MENU_ListInsert(pidList, MENU_ItemConstruct(varfType, &dirPID.ki, "ki", 5, menuItem_data_region));
-    }
-    MENU_ListInsert(List, MENU_ItemConstruct(varfType, &dirPID.errCurr, "error_pic",0U, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
+        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &speedL[0], "speedL", 1, menuItem_data_region | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &speedR[0], "speedR", 2, menuItem_data_region | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &servo_ctrlOutput, "servo", 0U, menuItem_data_NoSave | menuItem_data_NoLoad));
 
-    MENU_ListInsert(List, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
+    }
+    static menu_list_t *Switch = MENU_ListConstruct("Switch", 20, List);
+    assert(Switch);
+    MENU_ListInsert(List, MENU_ItemConstruct(menuType, Switch, "Switch", 0, 0));
+    {
+        MENU_ListInsert(Switch,
+                MENU_ItemConstruct(variType, &PicSwitch, "PicSwitch", 0U, menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(Switch,
+                MENU_ItemConstruct(variType, &EmaSwitch, "EmaSwitch", 0U, menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
+        MENU_ListInsert(Switch,
+                MENU_ItemConstruct(variType, &spdenable, "spdenable", 0U, menuItem_data_NoSave | menuItem_data_NoLoad | menuItem_dataExt_HasMinMax));
+    }
 }
 
 
@@ -61,26 +83,23 @@ void controlInit(void)
     directiontask = pitMgr_t::insert(20U,3U,directionCTRL,pitMgr_t::enable);
     assert(directiontask);
 
-    EMAcolloction = pitMgr_t::insert(20U,4U,GetEMASignalHandLer,pitMgr_t::enable);
+    EMAcolloction = pitMgr_t::insert(20U,4U,FilterHandler,pitMgr_t::enable);
     assert(EMAcolloction);
 }
 
 float speedL[3]={0.0f,-100.0f,100.0f},speedR[3]={0.0f,-100.0f,100.0f};
+uint32_t spdenable[3]={0,0,1};
 void motorCTRL (void*)
 {
-    if (protect >= 5)
+    if (1==spdenable[0])
     {
-        motorSetSpeed(0.0f, 0.0f);
-    }
-    else
-    {
-        if (abs(dirPID.errCurr) < EPS)
+        if (abs(dirPID_PIC.errCurr) < EPS)
         {
             motorSetSpeed(speedL[0],speedR[0]);
         }
         else
         {
-            if (dirPID.errCurr > 0) //right
+            if (dirPID_PIC.errCurr > 0) //right
             {
             motorSetSpeed(speedL[0],speedR[0]);
             }
@@ -90,26 +109,48 @@ void motorCTRL (void*)
             }
         }
     }
+    else
+    {
+        motorSetSpeed(0.0f,0.0f);
+    }
+    //motorSetSpeed(speedL[0],speedR[0]);
 }
 
 
-pidCtrl_t dirPID =
+pidCtrl_t dirPID_PIC =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
-
+pidCtrl_t dirPID_EMA =
+{ .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
 float servo_ctrlOutput =7.5f;
 
+uint32_t PicSwitch[3]={0,0,1};
+uint32_t EmaSwitch[3]={0,0,1};
 void directionCTRL(void*)
 {
-    servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID, (float)(mid_line[front]-94));
-    if(255==mid_line[front])
-    { servo_ctrlOutput=7.5f;}
-    else if(servo_ctrlOutput>8.5f)
-    {  servo_ctrlOutput = 8.5f;}
-    else if(servo_ctrlOutput<6.6f)
-    { servo_ctrlOutput = 6.6f;}
-
+    if(PicSwitch[0]==1&&EmaSwitch[0]==0)//图像开
+    {
+           servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[front]-94));
+         if(255==mid_line[front])
+            { servo_ctrlOutput=7.5f;}
+           else if(servo_ctrlOutput>8.5f)
+           {  servo_ctrlOutput = 8.5f;}
+           else if(servo_ctrlOutput<6.6f)
+           { servo_ctrlOutput = 6.6f;}
+    }
+    else if(PicSwitch[0]==0&&EmaSwitch[0]==1)//电磁开
+    {
+        servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID_EMA,DRP(adc[1],adc[0]));
+        if(servo_ctrlOutput>8.5f)
+            servo_ctrlOutput = 8.5f;
+        else if(servo_ctrlOutput<6.6f)
+            servo_ctrlOutput = 6.6f;
+    }
         SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrlOutput);
 }
+
+
+
+
 
 
 void motorSetSpeed(float speedL, float speedR)
@@ -155,4 +196,11 @@ void motorSetSpeed(float speedL, float speedR)
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_2, 20000U, 0.0f);
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, -speedL);
     }
+}
+
+void StartPicture(menu_keyOp_t*  op)
+{
+    PicSwitch[0]=1;
+    SDK_DelayAtLeastUs(2000000,CLOCK_GetFreq(kCLOCK_CoreSysClk));
+    spdenable[0]=1;
 }
