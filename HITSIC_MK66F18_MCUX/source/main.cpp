@@ -84,7 +84,7 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 
 /** SCLIB_TEST */
 #include "sc_test.hpp"
-
+#include"sc_host.h"
 /**Team_FUC*/
 #include "image.h"
 #include"my_control.hpp"
@@ -157,11 +157,11 @@ void main(void)
     DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
     uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
     uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
-  //  uint8_t *imageBuffer2 = new uint8_t[DMADVP0->imgSize];
+  //uint8_t *imageBuffer2 = new uint8_t[DMADVP0->imgSize];
 
     DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
     DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
-   // DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer2);
+  //DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer2);
     DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //TODO: 在这里初始化摄像头
@@ -182,6 +182,7 @@ void main(void)
     {
         //TODO: 在这里添加屏幕显示代码
             pictureDisp();
+            SCHOST_VarUpload(transform,4);
         //TODO: 在这里添加车模保护代码
     };
 }
@@ -191,8 +192,6 @@ void MENU_DataSetUp(void)
     //TODO: 在这里添加子菜单和菜单项
     electronMenuSetup(menu_menuRoot);
     CTRL_MENUSETUP(menu_menuRoot);
-
-
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)

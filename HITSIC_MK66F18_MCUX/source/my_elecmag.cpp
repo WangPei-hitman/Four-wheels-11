@@ -61,6 +61,8 @@ void FilterHandler(void*)
         LV_Temp[1][i] = SCADC_Sample(ADC0, 0, 12);
         LV_Temp[0][i] = (LV_Temp[0][i] > 255) ? 255 : LV_Temp[0][i];
         LV_Temp[1][i] = (LV_Temp[1][i] > 255) ? 255 : LV_Temp[1][i];
+        LV_Temp[0][i] = (LV_Temp[0][i] < 1) ? 1 : LV_Temp[0][i];
+        LV_Temp[1][i] = (LV_Temp[1][i] < 1) ? 1 : LV_Temp[1][i];
     }
 
     //sort
@@ -114,6 +116,6 @@ void bubbleSort(uint32_t *arr, uint32_t n)
 void StartEma(menu_keyOp_t*  op)
 {
     EmaSwitch[0]=1;
-    SDK_DelayAtLeastUs(2000000,CLOCK_GetFreq(kCLOCK_CoreSysClk));
+    SDK_DelayAtLeastUs(1500000,CLOCK_GetFreq(kCLOCK_CoreSysClk));
     spdenable[0]=1;
 }
