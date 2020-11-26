@@ -182,7 +182,7 @@ void main(void)
     {
         //TODO: 在这里添加屏幕显示代码
             pictureDisp();
-            SCHOST_VarUpload(transform,4);
+            SCHOST_VarUpload(transform,6);
         //TODO: 在这里添加车模保护代码
     };
 }

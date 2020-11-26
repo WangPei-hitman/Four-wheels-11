@@ -10,6 +10,11 @@
 #define EPS 10
 #define DRP(x,y)  ((x-y)/(x*y))
 #define SPD_COEFF 0.03463802
+#define DELAY 3000
+#define SERVOMID 7.55f
+#define SERVOLEFT 8.45f
+#define SERVORIGHT 6.7f
+#define DIFFSPEED(x)  (0.2541*(x)*(x)*(x) + 0.1772*(x)*(x) + 0.4642*(x) - 0.0092)
 
 /*中断任务句柄*/
 pitMgr_t* motorcontrol =nullptr;
@@ -22,7 +27,7 @@ pitMgr_t* EMAcolloction=nullptr;
 int front = 50;//前瞻
 int thro;//摄像头阈值
 
-
+float transform[6];///< Wi-Fi 数据传输数组
 
 
 
@@ -47,6 +52,8 @@ void CTRL_MENUSETUP(menu_list_t* List)
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.kp, "spd_kp", 14, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.kd, "spd_kd", 15, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.ki, "spd_ki", 16, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kL, "kL", 17, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kR, "kR", 18, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &front, "front", 6, menuItem_data_region));
             }
             MENU_ListInsert(Low, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
@@ -119,13 +126,13 @@ error_para_t spdRerror=
 {
       .errorCurr=0.0f, .errorLast=0.0f, .errorPrev=0.0f
 };
+float kL=1.0f,kR=1.0f;///<左右轮差速系数
 
-float transform[4];
 void motorCTRL (void*)
 {
     ctrl_spdL = ((float)SCFTM_GetSpeed(FTM1)) * SPD_COEFF;
     SCFTM_ClearSpeed(FTM1);
-    ctrl_spdR = -((float)SCFTM_GetSpeed(FTM2)) * SPD_COEFF;
+    ctrl_spdR = -((float)SCFTM_GetSpeed(FTM2))* SPD_COEFF;
     SCFTM_ClearSpeed(FTM2);
 
     transform[0]=ctrl_spdL;
@@ -136,14 +143,25 @@ void motorCTRL (void*)
     speedR[2]=speedL[2];///<速度最值设定
     speedR[1]=speedL[1];
 
+
     if(1 == spdenable[0])
     {
-        speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,motorLSet-ctrl_spdL);
-        speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,motorRSet-ctrl_spdR);
-        speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
-        speedR[0]=(speedR[0]>speedR[2])?speedR[2]:speedR[0];
-        speedL[0]=(speedL[0]<speedL[1])?speedL[1]:speedL[0];
-        speedR[0]=(speedR[0]<speedR[1])?speedR[1]:speedR[0];
+        float err_servo = servo_ctrlOutput - SERVOMID;
+        float spdFix = DIFFSPEED(err_servo)*ctrl_spdL;
+
+        transform[4]=motorLSet-kL*spdFix;
+         transform[5]=motorRSet+kR*spdFix;
+
+        if(err_servo>0)//舵机左打，内轮为左侧
+        {
+            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*spdFix)-ctrl_spdL);
+            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,motorRSet-ctrl_spdR);
+        }
+        else
+        {
+            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,motorLSet-ctrl_spdL);
+            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kR*spdFix)-ctrl_spdR);
+        }
     }
     else
     {
@@ -158,7 +176,7 @@ pidCtrl_t dirPID_PIC =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
 pidCtrl_t dirPID_EMA =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
-float servo_ctrlOutput =7.5f;
+float servo_ctrlOutput =7.5f;///<舵机输出
 
 uint32_t PicSwitch[3]={0,0,1};
 uint32_t EmaSwitch[3]={0,0,1};
@@ -166,77 +184,78 @@ void directionCTRL(void*)
 {
     if(PicSwitch[0]==1&&EmaSwitch[0]==0)//图像开
     {
-           servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[front]-94));
+           servo_ctrlOutput =SERVOMID - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[front]-94));
          if(255==mid_line[front])
             {
-             servo_ctrlOutput=7.5f;
+             servo_ctrlOutput=SERVOMID;
             }
-           else if(servo_ctrlOutput>8.5f)
-           {  servo_ctrlOutput = 8.5f;}
-           else if(servo_ctrlOutput<6.6f)
-           { servo_ctrlOutput = 6.6f;}
+           else if(servo_ctrlOutput>SERVOLEFT)
+           {  servo_ctrlOutput = SERVOLEFT;}
+           else if(servo_ctrlOutput<SERVORIGHT)
+           { servo_ctrlOutput = SERVORIGHT;}
     }
     else if(PicSwitch[0]==0&&EmaSwitch[0]==1)//电磁开
     {
         servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID_EMA,DRP(adc[1],adc[0]));
-        if(servo_ctrlOutput>8.4f)
-            servo_ctrlOutput = 8.4f;
-        else if(servo_ctrlOutput<6.7f)
-            servo_ctrlOutput = 6.7f;
+        if(servo_ctrlOutput>SERVOLEFT)
+            servo_ctrlOutput = SERVOLEFT;
+        else if(servo_ctrlOutput<SERVORIGHT)
+            servo_ctrlOutput = SERVORIGHT;
     }
         SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrlOutput);
 }
 
 
-void motorSetSpeed(float speedL, float speedR)
+void motorSetSpeed(float spdL, float spdR)
 {
-//    if(speedL>100.0f)
-//    {
-//        speedR-=speedL-100.0f;
-//        speedL =100.0f;
-//    }
-//    if(speedL<-100.f)
-//    {
-//        speedR-=speedL+100.0f;
-//        speedL = -100.0f;
-//    }
-//
-//    if(speedR>100.0f)
-//    {
-//        speedL-=speedR-100.0f;
-//        speedR =100.0f;
-//    }
-//    if(speedR<-100.f)
-//    {
-//        speedL-=speedR+100.0f;
-//        speedR = -100.0f;
-//    }
-    if (speedR > 0)
+    if(spdL>speedL[2])
+    {
+        spdR-=spdL-speedL[2];
+        spdL =speedL[2];
+    }
+    if(spdL<speedL[1])
+    {
+        spdR-=spdL-speedL[1];
+        spdL = speedL[1];
+    }
+
+    if(spdR>speedR[2])
+    {
+        spdL-=spdR-speedR[2];
+        spdR =speedR[2];
+    }
+    if(spdR<speedR[1])
+    {
+        spdL-=spdR-speedR[1];
+        spdR = speedR[1];
+    }
+    if (spdR > 0)
     {
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, 0.0f);
-        SCFTM_PWM_Change(FTM0, kFTM_Chnl_1, 20000U, speedR);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_1, 20000U, spdR);
     }
     else
     {
-        SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, -speedR);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, -spdR);
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_1, 20000U, 0.0f);
     }
     if (speedL > 0)
     {
-        SCFTM_PWM_Change(FTM0, kFTM_Chnl_2, 20000U, speedL);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_2, 20000U, spdL);
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, 0.0f);
     }
     else
     {
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_2, 20000U, 0.0f);
-        SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, -speedL);
+        SCFTM_PWM_Change(FTM0, kFTM_Chnl_3, 20000U, -spdL);
     }
 }
 
 void StartPicture(menu_keyOp_t*  op)
 {
     PicSwitch[0]=1;
-    SDK_DelayAtLeastUs(2000000,CLOCK_GetFreq(kCLOCK_CoreSysClk));
+
+
     spdenable[0]=1;
 }
 
