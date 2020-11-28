@@ -147,11 +147,11 @@ void main(void)
     MENU_Suspend();
     /** 初始化摄像头 */
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                                   //设置摄像头配置
-    CAM_ZF9V034_CfgWrite(&cameraCfg);                                   //写入配置
+    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                     //设置摄像头配置
+    CAM_ZF9V034_CfgWrite(&cameraCfg);                             //写入配置
 
     CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
-    DMADVP_Init(DMADVP0, &dmadvpCfg);
+    DMADVP_Init(DMADVP0, &dmadvpCfg);                            //DMA初始化
 
     dmadvp_handle_t dmadvpHandle;
     DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
@@ -169,7 +169,6 @@ void main(void)
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
     MENU_Resume();
-
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
     controlInit();
@@ -181,8 +180,8 @@ void main(void)
     while (true)
     {
         //TODO: 在这里添加屏幕显示代码
-            pictureDisp();
-            SCHOST_VarUpload(transform,6);
+            pictureDisp();                                  //oled图像显示
+            SCHOST_VarUpload(transform,6);           //WIFI传输
         //TODO: 在这里添加车模保护代码
     };
 }
@@ -190,8 +189,8 @@ void main(void)
 void MENU_DataSetUp(void)
 {
     //TODO: 在这里添加子菜单和菜单项
-    electronMenuSetup(menu_menuRoot);
-    CTRL_MENUSETUP(menu_menuRoot);
+    electronMenuSetup(menu_menuRoot);            //电磁部分菜单
+    CTRL_MENUSETUP(menu_menuRoot);           //控制部分菜单
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
@@ -199,23 +198,25 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
     //TODO: 补完本回调函数，双缓存采图。
     dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*) userData;
     status_t result = 0;
-    DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);
-    result = DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle);
+    DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);     //是否开始传输
+    result = DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle);      //开始传输
     //PRINTF("new full buffer: 0x%-8.8x = 0x%-8.8x\n", handle->fullBuffer.front(), handle->xferCfg.destAddr);
     if (kStatus_Success != result)
     {
-        DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
+        DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);   //停止传输
         PRINTF("transfer stop! insufficent buffer\n");
     }
     if (transferDone == true)
     {
-        DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);
-        threshold=(uint8_t)thro;
-        image_main();
-        DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
+        DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);   //读取数据
+        threshold=(uint8_t)thro;  //获取阈值
+        image_main();       //处理图像
+        DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);   //释放指针
     }
 }
 
+
+////////**oled显示图像**//////////
 void pictureDisp(void)
 {
     uint8_t menuSuspend_flag = 0;
@@ -225,7 +226,6 @@ void pictureDisp(void)
         {
             MENU_Suspend();
             menuSuspend_flag = 1;
-
         }
         dispBuffer.Clear();
         const uint8_t imageTH = threshold;

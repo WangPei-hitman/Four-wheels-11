@@ -21,16 +21,10 @@ pitMgr_t* motorcontrol =nullptr;
 pitMgr_t* directiontask=nullptr;
 pitMgr_t* EMAcolloction=nullptr;
 
-
-
-
 int front = 50;//前瞻
 int thro;//摄像头阈值
 
 float transform[6];///< Wi-Fi 数据传输数组
-
-
-
 
 void CTRL_MENUSETUP(menu_list_t* List)
 {
@@ -59,7 +53,7 @@ void CTRL_MENUSETUP(menu_list_t* List)
             MENU_ListInsert(Low, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
             MENU_ListInsert(Low,
                     MENU_ItemConstruct(varfType, &dirPID_PIC.errCurr, "error_pic", 0U, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
-            MENU_ListInsert(Low, MENU_ItemConstruct(procType, StartPicture, "StartPicture", 0U, 0U));
+            MENU_ListInsert(Low, MENU_ItemConstruct(procType, StartPicture, "StartPicture", 0U, 0U));   //插入函数行
         }
     }
     static menu_list_t *basicpara = MENU_ListConstruct("basic_para", 20, List);
@@ -104,13 +98,13 @@ void controlInit(void)
 }
 
 
-float speedL[3]={0.0f,-100.0f,100.0f},speedR[3]={0.0f,-100.0f,100.0f};
+float speedL[3]={0.0f,-100.0f,100.0f},speedR[3]={0.0f,-100.0f,100.0f};//速度设定
 
 float ctrl_spdL = 0.0f, ctrl_spdR = 0.0f;
 
-float motorLOutput=0.0f,motorROutput=0.0f;
+float motorLOutput=0.0f,motorROutput=0.0f;//电机输出
 
-float motorLSet=0.0f,motorRSet=0.0f;
+float motorLSet=0.0f,motorRSet=0.0f;//电机速度设定（差速用）
 
 uint32_t spdenable[3]={0,0,1};///<速度环使能
 
@@ -128,33 +122,34 @@ error_para_t spdRerror=
 };
 float kL=1.0f,kR=1.0f;///<左右轮差速系数
 
+/*电机控制*/
+///////////////////////////////////////////////////////////////////////////////////////
 void motorCTRL (void*)
 {
-    ctrl_spdL = ((float)SCFTM_GetSpeed(FTM1)) * SPD_COEFF;
-    SCFTM_ClearSpeed(FTM1);
+    ctrl_spdL = ((float)SCFTM_GetSpeed(FTM1)) * SPD_COEFF;//编码器获取速度
+    SCFTM_ClearSpeed(FTM1);//清空编码器
     ctrl_spdR = -((float)SCFTM_GetSpeed(FTM2))* SPD_COEFF;
     SCFTM_ClearSpeed(FTM2);
 
     transform[0]=ctrl_spdL;
     transform[1]=ctrl_spdR;
     transform[2]=motorLSet;
-    transform[3]=motorRSet;
+    transform[3]=motorRSet;//WiFi传值
 
     speedR[2]=speedL[2];///<速度最值设定
     speedR[1]=speedL[1];
 
-
     if(1 == spdenable[0])
     {
-        float err_servo = servo_ctrlOutput - SERVOMID;
-        float spdFix = DIFFSPEED(err_servo)*ctrl_spdL;
+        float err_servo = servo_ctrlOutput - SERVOMID;//求出舵机打角量
+        float spdFix = DIFFSPEED(err_servo)*ctrl_spdL;//打角时应有的速度偏移
 
         transform[4]=motorLSet-kL*spdFix;
-         transform[5]=motorRSet+kR*spdFix;
+        transform[5]=motorRSet+kR*spdFix;
 
         if(err_servo>0)//舵机左打，内轮为左侧
         {
-            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*spdFix)-ctrl_spdL);
+            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*spdFix)-ctrl_spdL);//PID得出速度
             speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,motorRSet-ctrl_spdR);
         }
         else
@@ -168,7 +163,7 @@ void motorCTRL (void*)
         speedL[0] = 0.0f;
         speedR[0] = 0.0f;
     }
-    motorSetSpeed(speedL[0],speedR[0]);
+    motorSetSpeed(speedL[0],speedR[0]);//电机输出
 }
 
 
@@ -176,23 +171,26 @@ pidCtrl_t dirPID_PIC =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
 pidCtrl_t dirPID_EMA =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
-float servo_ctrlOutput =7.5f;///<舵机输出
+float servo_ctrlOutput =7.55f;///<舵机输出
 
-uint32_t PicSwitch[3]={0,0,1};
-uint32_t EmaSwitch[3]={0,0,1};
+uint32_t PicSwitch[3]={0,0,1};//图像开关
+uint32_t EmaSwitch[3]={0,0,1};//电磁开关
+
+/*舵机控制*/
+////////////////////////////////////////////////////////////////////////////////////////
 void directionCTRL(void*)
 {
     if(PicSwitch[0]==1&&EmaSwitch[0]==0)//图像开
     {
-           servo_ctrlOutput =SERVOMID - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[front]-94));
-         if(255==mid_line[front])
+           servo_ctrlOutput =SERVOMID - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[front]-94));//得到打角
+         if(255==mid_line[front])//失去中线就将舵机打直
             {
              servo_ctrlOutput=SERVOMID;
             }
            else if(servo_ctrlOutput>SERVOLEFT)
            {  servo_ctrlOutput = SERVOLEFT;}
            else if(servo_ctrlOutput<SERVORIGHT)
-           { servo_ctrlOutput = SERVORIGHT;}
+           { servo_ctrlOutput = SERVORIGHT;}//输出舵机打角
     }
     else if(PicSwitch[0]==0&&EmaSwitch[0]==1)//电磁开
     {
@@ -254,8 +252,7 @@ void motorSetSpeed(float spdL, float spdR)
 void StartPicture(menu_keyOp_t*  op)
 {
     PicSwitch[0]=1;
-
-
+    //缺少延时处理
     spdenable[0]=1;
 }
 
@@ -263,7 +260,7 @@ float UpdatePIDandCacul(PID_para_t PID,error_para_t* Err,float error)
 {
 Err->errorPrev=Err->errorLast;
 Err->errorLast=Err->errorCurr;
-Err->errorCurr=error;
+Err->errorCurr=error;           //更新error
 float increase;
     increase= PID.kp*(Err->errorCurr-Err->errorLast)+
             PID.ki*Err->errorCurr+
@@ -271,7 +268,7 @@ float increase;
    return increase;
 }
 
-void AC(menu_keyOp_t*  op)
+void AC(menu_keyOp_t*  op)  //采集时用于清零打角
 {
     SCFTM_ClearSpeed(FTM1);
     SCFTM_ClearSpeed(FTM2);
