@@ -92,7 +92,7 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 
 
 
-extern int protect;                                   //protection
+//GG status;
 
 void MENU_DataSetUp(void);
 
@@ -213,7 +213,6 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
     if (transferDone == true)
     {
         DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);
-        threshold=(uint8_t)thro;
         image_main();
         DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
     }

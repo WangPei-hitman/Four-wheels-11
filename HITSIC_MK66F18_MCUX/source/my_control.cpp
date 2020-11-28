@@ -27,7 +27,6 @@ pitMgr_t* timerCounthandler=nullptr;
 
 
 int front = 50;//前瞻
-int thro;//摄像头阈值
 
 float transform[6];///< Wi-Fi 数据传输数组
 
@@ -57,11 +56,13 @@ void CTRL_MENUSETUP(menu_list_t* List)
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kinner[0], "kinner", 17, menuItem_data_region|menuItem_dataExt_HasMinMax));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &beilv, "beilv", 18, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &front, "front", 6, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &threshold, "threshold", 23, menuItem_data_region));
             }
-            MENU_ListInsert(Low, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
+
             MENU_ListInsert(Low,
                     MENU_ItemConstruct(varfType, &dirPID_PIC.errCurr, "error_pic", 0U, menuItem_data_ROFlag | menuItem_data_NoSave | menuItem_data_NoLoad));
             MENU_ListInsert(Low, MENU_ItemConstruct(procType, StartPicture, "StartPicture", 0U, 0U));
+
         }
     }
     static menu_list_t *basicpara = MENU_ListConstruct("basic_para", 20, List);

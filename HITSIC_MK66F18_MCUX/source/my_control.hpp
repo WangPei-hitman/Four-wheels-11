@@ -47,7 +47,7 @@ typedef struct error_para
 extern float transform[6];///<用于发送数据
 
 extern int front;
-extern int thro;
+
 extern float speedL[3],speedR[3];
 extern pidCtrl_t dirPID_PIC, dirPID_EMA;
 extern uint32_t PicSwitch[3];
