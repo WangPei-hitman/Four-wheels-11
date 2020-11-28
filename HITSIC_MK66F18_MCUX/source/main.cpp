@@ -111,6 +111,9 @@ graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
 void main(void)
 {
     /** 初始化阶段，关闭总中断 */
+
+
+
     HAL_EnterCritical();
 
     /** BSP（板级支持包）初始化 */

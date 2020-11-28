@@ -57,11 +57,14 @@ extern uint32_t spdenable[3];
 extern float servo_ctrlOutput;
 extern float ctrl_spdL , ctrl_spdR ;
 
-extern float kL,kR;
+extern float kinner[3],beilv;
 extern PID_para_t spdPID;
 extern error_para_t spdLerror,spdRerror;
 extern float motorLSet,motorRSet;
 extern float motorLOutput,motorROutput;
+extern int timerCount;
+
+
 /*
  * @brief:控制参数菜单
  */
@@ -93,5 +96,6 @@ float UpdatePIDandCacul(PID_para_t PID,error_para_t* Err,float error);
 
 void AC(menu_keyOp_t*  op);
 
+void TimerCount (void*);
 
 #endif /* MY_CONTROL_HPP_ */
