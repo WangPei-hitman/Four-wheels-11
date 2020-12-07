@@ -46,7 +46,7 @@ typedef struct error_para
 
 extern float transform[6];///<用于发送数据
 
-extern int front;
+extern int dir_front,spd_front;
 extern int thro;
 extern float speedL[3],speedR[3];
 extern pidCtrl_t dirPID_PIC, dirPID_EMA;
@@ -57,7 +57,7 @@ extern uint32_t spdenable[3];
 extern float servo_ctrlOutput;
 extern float ctrl_spdL , ctrl_spdR ;
 
-extern float kinner[3],beilv;
+extern float kinner[3],kL,kR;
 extern PID_para_t spdPID;
 extern error_para_t spdLerror,spdRerror;
 extern float motorLSet,motorRSet;

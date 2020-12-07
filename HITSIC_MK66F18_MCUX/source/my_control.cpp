@@ -11,10 +11,10 @@
 #define DRP(x,y)  ((x-y)/(x*y))
 #define SPD_COEFF 0.03463802
 #define DELAY 3000
-#define SERVOMID 7.55f
+#define SERVOMID 7.49f
 #define SERVOLEFT 8.45f
 #define SERVORIGHT 6.7f
-#define DIFFSPEED(x)  (0.2541*(x)*(x)*(x) + 0.1772*(x)*(x) + 0.4642*(x) - 0.0092)
+#define DIFFSPEED(x)  (0.3131*(x)*(x)*(x) + 0.2317*(x)*(x) + 0.4825*(x) - 0.0041)
 
 
 /*中断任务句柄*/
@@ -26,7 +26,7 @@ pitMgr_t* timerCounthandler=nullptr;
 
 
 
-int front = 50;//前瞻
+int dir_front = 50;//前瞻
 int thro;//摄像头阈值
 
 float transform[6];///< Wi-Fi 数据传输数组
@@ -55,8 +55,10 @@ void CTRL_MENUSETUP(menu_list_t* List)
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.kd, "spd_kd", 15, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.ki, "spd_ki", 16, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kinner[0], "kinner", 17, menuItem_data_region|menuItem_dataExt_HasMinMax));
-                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &beilv, "beilv", 18, menuItem_data_region));
-                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &front, "front", 6, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kL, "kL", 18, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kR, "kR", 19, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &dir_front, "dir_front", 6, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &spd_front, "spd_front",20,menuItem_data_region));
             }
             MENU_ListInsert(Low, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
             MENU_ListInsert(Low,
@@ -91,7 +93,7 @@ void CTRL_MENUSETUP(menu_list_t* List)
     }
 }
 
-
+pidCtrl_t* SpeedDiff=nullptr;
 /**控制环初始化*/
 void controlInit(void)
 {
@@ -106,6 +108,8 @@ void controlInit(void)
 
     timerCounthandler= pitMgr_t::insert(500U,51U,TimerCount,pitMgr_t::enable);
     assert(timerCounthandler);
+
+     SpeedDiff= PIDCTRL_Construct(dirPID_PIC.kp,dirPID_PIC.ki,dirPID_PIC.kd);
 }
 
 
@@ -131,7 +135,7 @@ error_para_t spdRerror=
 {
       .errorCurr=0.0f, .errorLast=0.0f, .errorPrev=0.0f
 };
-float kinner[3]={1.0f,0.0f,1.0f},beilv=1.0f;///<内外轮差速
+float kinner[3]={1.0f,0.0f,1.0f},kL=1.0f,kR=1.0f;///<内外轮差速
 
 void motorCTRL (void*)
 {
@@ -151,16 +155,19 @@ void motorCTRL (void*)
 
     if(1 == spdenable[0])
     {
-        float err_servo = servo_ctrlOutput - SERVOMID;
+        //  float err_servo = - PIDCTRL_UpdateAndCalcPID(SpeedDiff, (float)(mid_line[spd_front]-94));
+        float err_servo =servo_ctrlOutput-SERVOMID;
         float spdFix = DIFFSPEED(err_servo)*motorLSet;
-        spdFix*=beilv;
+
         transform[4]=(motorLSet-kinner[0]*spdFix);
         transform[5]=(motorRSet+(1-kinner[0])*spdFix);
 
         if(err_servo>0)//舵机左打，内轮为左侧
         {
-            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kinner[0]*spdFix)-ctrl_spdL);
-            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+(1.0f-kinner[0]) * spdFix) - ctrl_spdR);
+            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*kinner[0]*spdFix)-ctrl_spdL);
+            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kR*(1.0f-kinner[0]) * spdFix) - ctrl_spdR);
+            transform[4]=(motorLSet-kL*kinner[0]*spdFix);
+            transform[5]=(motorRSet+kR*(1-kinner[0])*spdFix);
             speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
             speedL[0]=(speedL[0]<speedL[1])?speedL[1]:speedL[0];
             speedR[0]=(speedR[0]>speedR[2])?speedR[2]:speedR[0];
@@ -168,8 +175,10 @@ void motorCTRL (void*)
         }
         else
         {
-            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-(1.0f-kinner[0])*spdFix)-ctrl_spdL);
-            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kinner[0]*spdFix)-ctrl_spdR);
+            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*(1.0f-kinner[0])*spdFix)-ctrl_spdL);
+            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kR*kinner[0]*spdFix)-ctrl_spdR);
+            transform[4]=(motorLSet-kL*(1.0f-kinner[0])*spdFix);
+            transform[5]=(motorRSet+kR*kinner[0]*spdFix);
             speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
             speedL[0]=(speedL[0]<speedL[1])?speedL[1]:speedL[0];
             speedR[0]=(speedR[0]>speedR[2])?speedR[2]:speedR[0];
@@ -189,16 +198,22 @@ pidCtrl_t dirPID_PIC =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
 pidCtrl_t dirPID_EMA =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
-float servo_ctrlOutput =7.5f;///<舵机输出
+float servo_ctrlOutput =SERVOMID;///<舵机输出
 
 uint32_t PicSwitch[3]={0,0,1};
 uint32_t EmaSwitch[3]={0,0,1};
+
+int spd_front=50;
+
 void directionCTRL(void*)
 {
+    PIDCTRL_Setup(SpeedDiff,dirPID_PIC.kp,dirPID_PIC.ki,dirPID_PIC.kd);
+
     if(PicSwitch[0]==1&&EmaSwitch[0]==0)//图像开
     {
-           servo_ctrlOutput =SERVOMID - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[front]-94));
-         if(255==mid_line[front])
+
+        servo_ctrlOutput =SERVOMID - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[dir_front]-94));
+         if(255==mid_line[dir_front])
             {
              servo_ctrlOutput=SERVOMID;
             }
