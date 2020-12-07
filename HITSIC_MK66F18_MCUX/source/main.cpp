@@ -111,6 +111,9 @@ graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
 void main(void)
 {
     /** 初始化阶段，关闭总中断 */
+
+
+
     HAL_EnterCritical();
 
     /** BSP（板级支持包）初始化 */
@@ -195,6 +198,7 @@ void MENU_DataSetUp(void)
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
+    GG gg;
     //TODO: 补完本回调函数，双缓存采图。
     dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*) userData;
     status_t result = 0;
@@ -210,7 +214,7 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
     {
         DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);   //读取数据
         threshold=(uint8_t)thro;  //获取阈值
-        image_main();       //处理图像
+        gg = image_main();       //处理图像
         DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);   //释放指针
     }
 }
