@@ -58,7 +58,7 @@
 #include "sys_extint.hpp"
 #include "sys_uartmgr.hpp"
 #include "cm_backtrace.h"
-#include "easyflash.h"
+//#include "easyflash.h"
 
 /** HITSIC_Module_LIB */
 #include "lib_graphic.hpp"
@@ -81,19 +81,26 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 #include "drv_imu_invensense_test.hpp"
 #include "sys_fatfs_test.hpp"
 #include "sys_fatfs_diskioTest.hpp"
-#include "extlib_easyflash_test.hpp"
 
 /** SCLIB_TEST */
 #include "sc_test.hpp"
+#include"sc_host.h"
+/**Team_FUC*/
+#include "image.h"
+#include"my_control.hpp"
+#include "my_elecmag.hpp"
 
 
+
+extern int protect;                                   //protection
 
 void MENU_DataSetUp(void);
 
 cam_zf9v034_configPacket_t cameraCfg;
 dmadvp_config_t dmadvpCfg;
-dmadvp_handle_t dmadvpHandle;
+
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds);
+void pictureDisp(void);
 
 inv::i2cInterface_t imu_i2c(nullptr, IMU_INV_I2cRxBlocking, IMU_INV_I2cTxBlocking);
 inv::mpu6050_t imu_6050(imu_i2c);
@@ -104,6 +111,9 @@ graphic::bufPrint0608_t<disp_ssd1306_frameBuffer_t> bufPrinter(dispBuffer);
 void main(void)
 {
     /** 初始化阶段，关闭总中断 */
+
+
+
     HAL_EnterCritical();
 
     /** BSP（板级支持包）初始化 */
@@ -117,12 +127,10 @@ void main(void)
     RTEPIP_Device();
 
     /** 初始化调试组件 */
-    //DbgConsole_Init(0U, 921600U, kSerialPort_Uart, CLOCK_GetFreq(kCLOCK_CoreSysClk));
+    DbgConsole_Init(0U, 921600U, kSerialPort_Uart, CLOCK_GetFreq(kCLOCK_CoreSysClk));
     PRINTF("Welcome to HITSIC !\n");
-    PRINTF("Compiler: GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
-    PRINTF("C++ std = %d\n", __cplusplus);
-    PRINTF("Complie time: %s %s\n", __DATE__, __TIME__);
-    cm_backtrace_init("HITSIC_MK66F18", "2020-v3.0", "v4.2.0");
+    PRINTF("GCC %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+    cm_backtrace_init("HITSIC_MK66F18", "2020-v3.0", "v4.1.1");
 
     /** 初始化OLED屏幕 */
     DISP_SSD1306_Init();
@@ -130,7 +138,6 @@ void main(void)
     DISP_SSD1306_BufferUpload((uint8_t*) DISP_image_100thAnniversary);
     /** 初始化ftfx_Flash */
     FLASH_SimpleInit();
-    //easyflash_init();
     /** 初始化PIT中断管理器 */
     pitMgr_t::init();
     /** 初始化I/O中断管理器 */
@@ -142,49 +149,109 @@ void main(void)
     /** 菜单挂起 */
     MENU_Suspend();
     /** 初始化摄像头 */
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    CAM_ZF9V034_GetDefaultConfig(&cameraCfg);                                   //设置摄像头配置
+    CAM_ZF9V034_CfgWrite(&cameraCfg);                                   //写入配置
+
+    CAM_ZF9V034_GetReceiverConfig(&dmadvpCfg, &cameraCfg);    //生成对应接收器的配置数据，使用此数据初始化接受器并接收图像数据。
+    DMADVP_Init(DMADVP0, &dmadvpCfg);
+
+    dmadvp_handle_t dmadvpHandle;
+    DMADVP_TransferCreateHandle(&dmadvpHandle, DMADVP0, CAM_ZF9V034_DmaCallback);
+    uint8_t *imageBuffer0 = new uint8_t[DMADVP0->imgSize];
+    uint8_t *imageBuffer1 = new uint8_t[DMADVP0->imgSize];
+  //uint8_t *imageBuffer2 = new uint8_t[DMADVP0->imgSize];
+
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer0);
+    DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer1);
+  //DMADVP_TransferSubmitEmptyBuffer(DMADVP0, &dmadvpHandle, imageBuffer2);
+    DMADVP_TransferStart(DMADVP0, &dmadvpHandle);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //TODO: 在这里初始化摄像头
     /** 初始化IMU */
     //TODO: 在这里初始化IMU（MPU6050）
     /** 菜单就绪 */
-    //MENU_Resume();
+    MENU_Resume();
+
     /** 控制环初始化 */
     //TODO: 在这里初始化控制环
+    controlInit();
     /** 初始化结束，开启总中断 */
     HAL_ExitCritical();
-    //DISP_SSD1306_delay_ms(100);
-    //cDISP_SSD1306_BufferUpload((uint8_t*) DISP_image_100thAnniversary);
-    //DISP_SSD1306_delay_ms(100);
-    //DISP_SSD1306_BufferUploadDMA((uint8_t*) DISP_image_100thAnniversary);
-    CAM_ZF9V034_UnitTest();
-    //DISP_SSD1306_BufferUpload((uint8_t*) &dispBuffer);
-
-    //EF_BasicTest();
-    MENU_Resume();
     /** 内置DSP函数测试 */
     float f = arm_sin_f32(0.6f);
-
-//    menu_list_t *list = MENU_DirGetList("/TestList");
-//    if(true);
-//    menu_itemIfce_t *itme = MENU_DirGetItem(list, "region_i");
-
+    //pic_tackle();
     while (true)
     {
+        //TODO: 在这里添加屏幕显示代码
+            pictureDisp();
+            SCHOST_VarUpload(transform,6);
         //TODO: 在这里添加车模保护代码
-    }
+    };
 }
 
 void MENU_DataSetUp(void)
 {
-    MENU_ListInsert(menu_menuRoot, MENU_ItemConstruct(nullType, NULL, "EXAMPLE", 0, 0));
     //TODO: 在这里添加子菜单和菜单项
-    MENU_DataSetupTest(menu_menuRoot);
+    electronMenuSetup(menu_menuRoot);
+    CTRL_MENUSETUP(menu_menuRoot);
 }
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
     //TODO: 补完本回调函数，双缓存采图。
+    dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*) userData;
+    status_t result = 0;
+    DMADVP_EdmaCallbackService(dmadvpHandle, transferDone);
+    result = DMADVP_TransferStart(dmadvpHandle->base, dmadvpHandle);
+    //PRINTF("new full buffer: 0x%-8.8x = 0x%-8.8x\n", handle->fullBuffer.front(), handle->xferCfg.destAddr);
+    if (kStatus_Success != result)
+    {
+        DMADVP_TransferStop(dmadvpHandle->base, dmadvpHandle);
+        PRINTF("transfer stop! insufficent buffer\n");
+    }
+    if (transferDone == true)
+    {
+        DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);
+        threshold=(uint8_t)thro;
+        image_main();
+        DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);
+    }
+}
 
-    //TODO: 添加图像处理（转向控制也可以写在这里）
+void pictureDisp(void)
+{
+    uint8_t menuSuspend_flag = 0;
+    while (0U == GPIO_PinRead(GPIOA, 9))    //检测PTA9为低电平
+    {
+        if (0 == menuSuspend_flag)
+        {
+            MENU_Suspend();
+            menuSuspend_flag = 1;
+
+        }
+        dispBuffer.Clear();
+        const uint8_t imageTH = threshold;
+        for (int i = 0; i < cameraCfg.imageRow; i += 2)
+        {
+            int16_t imageRow = i >> 1;    //除以2,为了加速;
+            int16_t dispRow = (imageRow / 8) + 1, dispShift = (imageRow % 8);
+            for (int j = 0; j < cameraCfg.imageCol; j += 2)
+            {
+                int16_t dispCol = j >> 1;
+                if (fullBuffer[i * cameraCfg.imageCol + j] > imageTH && j != mid_line[i] && j != 94)
+                {
+                    dispBuffer.SetPixelColor(dispCol, imageRow, 1);
+                }
+            }
+        }
+        DISP_SSD1306_BufferUpload((uint8_t*) &dispBuffer);
+    }
+    if (1 == menuSuspend_flag)
+    {
+        MENU_Resume();
+        menuSuspend_flag = 0;
+    }
 }
 
 /**
@@ -203,5 +270,4 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
  *      中是十分危险的，可能造成车模进入“原地陀螺旋转”的状态，极易损坏车模或
  *      导致人员受伤。在设置电机占空比时务必做好异常保护。
  */
-
 
