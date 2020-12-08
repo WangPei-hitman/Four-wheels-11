@@ -58,7 +58,7 @@
 #include "sys_extint.hpp"
 #include "sys_uartmgr.hpp"
 #include "cm_backtrace.h"
-//#include "easyflash.h"
+#include "easyflash.h"
 
 /** HITSIC_Module_LIB */
 #include "lib_graphic.hpp"
