@@ -155,12 +155,10 @@ void motorCTRL (void*)
 
     if(1 == spdenable[0])
     {
-        //  float err_servo = - PIDCTRL_UpdateAndCalcPID(SpeedDiff, (float)(mid_line[spd_front]-94));
+
         float err_servo =servo_ctrlOutput-SERVOMID;
         float spdFix = DIFFSPEED(err_servo)*motorLSet;
 
-        transform[4]=(motorLSet-kinner[0]*spdFix);
-        transform[5]=(motorRSet+(1-kinner[0])*spdFix);
 
         if(err_servo>0)//舵机左打，内轮为左侧
         {
@@ -236,27 +234,6 @@ void directionCTRL(void*)
 
 void motorSetSpeed(float spdL, float spdR)
 {
-    if(spdL>speedL[2])
-    {
-        spdR-=spdL-speedL[2];
-        spdL =speedL[2];
-    }
-    if(spdL<speedL[1])
-    {
-        spdR-=spdL-speedL[1];
-        spdL = speedL[1];
-    }
-
-    if(spdR>speedR[2])
-    {
-        spdL-=spdR-speedR[2];
-        spdR =speedR[2];
-    }
-    if(spdR<speedR[1])
-    {
-        spdL-=spdR-speedR[1];
-        spdR = speedR[1];
-    }
     if (spdR > 0)
     {
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, 0.0f);
@@ -284,7 +261,7 @@ void StartPicture(menu_keyOp_t*  op)
     PicSwitch[0]=1;
     int recorder = timerCount;
 while(timerCount<recorder+4)continue;
-spdenable[0]=1;
+    spdenable[0]=1;
 }
 
 float UpdatePIDandCacul(PID_para_t PID,error_para_t* Err,float error)
