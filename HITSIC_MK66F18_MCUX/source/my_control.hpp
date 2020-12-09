@@ -44,6 +44,21 @@ typedef struct error_para
     errorPrev;
 }error_para_t;
 
+typedef enum CTRL_state
+{
+    stop=0,
+    start=1,
+    movement,
+}CTRL_state_t;
+typedef enum CTRL_event
+{
+    manual,
+    stopline,
+    motionsigns,
+    other,
+}CTRL_event_t;
+
+
 extern float transform[6];///<用于发送数据
 
 extern int dir_front,spd_front;
@@ -97,5 +112,9 @@ float UpdatePIDandCacul(PID_para_t PID,error_para_t* Err,float error);
 void AC(menu_keyOp_t*  op);
 
 void TimerCount (void*);
+void StateMachineUpdate(void*);
+void StateMachineInit(void);
+CTRL_event_t eventJudge(GG gg);
+
 
 #endif /* MY_CONTROL_HPP_ */

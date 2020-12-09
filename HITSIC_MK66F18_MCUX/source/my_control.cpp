@@ -16,14 +16,14 @@
 #define SERVORIGHT 6.7f
 #define DIFFSPEED(x)  (0.3131*(x)*(x)*(x) + 0.2317*(x)*(x) + 0.4825*(x) - 0.0041)
 
-
+extern GG judgeResult;
+CTRL_state_t stateCurr;
 /*中断任务句柄*/
 pitMgr_t* motorcontrol =nullptr;
 pitMgr_t* directiontask=nullptr;
 pitMgr_t* EMAcolloction=nullptr;
-
 pitMgr_t* timerCounthandler=nullptr;
-
+pitMgr_t* statemachinehandler=nullptr;
 
 
 int dir_front = 50;//前瞻
@@ -90,7 +90,7 @@ void CTRL_MENUSETUP(menu_list_t* List)
     }
 }
 
-pidCtrl_t* SpeedDiff=nullptr;
+
 /**控制环初始化*/
 void controlInit(void)
 {
@@ -106,7 +106,6 @@ void controlInit(void)
     timerCounthandler= pitMgr_t::insert(500U,51U,TimerCount,pitMgr_t::enable);
     assert(timerCounthandler);
 
-     SpeedDiff= PIDCTRL_Construct(dirPID_PIC.kp,dirPID_PIC.ki,dirPID_PIC.kd);
 }
 
 
@@ -153,12 +152,10 @@ void motorCTRL (void*)
 
     if(1 == spdenable[0])
     {
-        //  float err_servo = - PIDCTRL_UpdateAndCalcPID(SpeedDiff, (float)(mid_line[spd_front]-94));
+
         float err_servo =servo_ctrlOutput-SERVOMID;
         float spdFix = DIFFSPEED(err_servo)*motorLSet;
 
-        transform[4]=(motorLSet-kinner[0]*spdFix);
-        transform[5]=(motorRSet+(1-kinner[0])*spdFix);
 
         if(err_servo>0)//舵机左打，内轮为左侧
         {
@@ -205,7 +202,7 @@ int spd_front=50;
 
 void directionCTRL(void*)
 {
-    PIDCTRL_Setup(SpeedDiff,dirPID_PIC.kp,dirPID_PIC.ki,dirPID_PIC.kd);
+
 
     if(PicSwitch[0]==1&&EmaSwitch[0]==0)//图像开
     {
@@ -234,27 +231,6 @@ void directionCTRL(void*)
 
 void motorSetSpeed(float spdL, float spdR)
 {
-    if(spdL>speedL[2])
-    {
-        spdR-=spdL-speedL[2];
-        spdL =speedL[2];
-    }
-    if(spdL<speedL[1])
-    {
-        spdR-=spdL-speedL[1];
-        spdL = speedL[1];
-    }
-
-    if(spdR>speedR[2])
-    {
-        spdL-=spdR-speedR[2];
-        spdR =speedR[2];
-    }
-    if(spdR<speedR[1])
-    {
-        spdL-=spdR-speedR[1];
-        spdR = speedR[1];
-    }
     if (spdR > 0)
     {
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, 0.0f);
@@ -282,7 +258,8 @@ void StartPicture(menu_keyOp_t*  op)
     PicSwitch[0]=1;
     int recorder = timerCount;
 while(timerCount<recorder+4)continue;
-spdenable[0]=1;
+    stateCurr=start;
+    spdenable[0]=1;
 }
 
 float UpdatePIDandCacul(PID_para_t PID,error_para_t* Err,float error)
@@ -303,9 +280,88 @@ void AC(menu_keyOp_t*  op)  //采集时用于清零打角
     SCFTM_ClearSpeed(FTM2);
 }
 
-int timerCount=0;
+int timerCount=0;///<时间计数器
 
 void TimerCount(void*)
 {
     timerCount++;
+}
+
+
+void StateMachineInit(void)
+{
+    stateCurr= stop;
+    statemachinehandler = pitMgr_t::insert(CTRL_DIR_CTRL_MS,5U,StateMachineUpdate,pitMgr_t::enable);
+    assert(statemachinehandler);
+}
+void StateMachineUpdate(void*)
+{
+    CTRL_event_t eventcur = eventJudge(judgeResult);
+    if(manual==eventcur){
+    }
+    else if(other==eventcur)
+    {
+        switch(stateCurr)
+        {
+        case stop:
+            break;
+        case start:
+            break;
+        case movement:
+            break;
+        default:break;
+        }
+    }
+    else if(motionsigns==eventcur)
+    {
+
+        switch(stateCurr)
+        {
+        case stop:
+            break;
+        case start:
+            stateCurr=movement;
+            break;
+        case movement:
+            break;
+        default:break;
+        }
+    }
+    else //zebra
+    {
+        switch(stateCurr)
+        {
+        case stop:
+            break;
+        case start:
+            break;
+        case movement:
+            spdenable[0]=0;
+            int recorder = timerCount;
+        while(timerCount<recorder+4)continue;
+        stateCurr=stop;
+        PicSwitch[0]=0;
+            break;
+
+        }
+    }
+}
+
+CTRL_event_t eventJudge(GG gg)
+{
+   static int zebraCount=0;
+    if(gg==7)
+    {
+        ++zebraCount;
+    }else if(gg==4||gg==5){
+        zebraCount=0;
+        return motionsigns;
+    }
+    else{
+        zebraCount=0;
+        return other;
+    }
+   if (5==zebraCount){
+       return stopline;
+   }
 }
