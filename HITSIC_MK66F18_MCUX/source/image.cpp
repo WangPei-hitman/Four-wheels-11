@@ -62,7 +62,7 @@ int all_bar = 0;//所有白条子数
 uint8_t road_top;//赛道最高处所在行数
 uint8_t j_continue[CAMERA_H];//第一条连通路径
 //uint8_t threshold = 150;//阈值
-int front = 35;//图像专属伪前瞻
+int front = 25;//图像专属伪前瞻
 uint8_t length = 10;
 uint8_t farlength = 10;
 uint8_t head = 75;//车头前点
@@ -73,7 +73,7 @@ POS jud_points[2][3];//123求边沿
 uint8_t Start_line ;
 uint8_t End_line ;
 
-int threshold = 0;
+int threshold = 160;
 
 
 COR cor[4] = {};//四点标识
@@ -93,7 +93,7 @@ void THRE()
     uint8_t* my_map;
     
     map = fullBuffer;
-    threshold = 160;//myOtsu(map);
+    //threshold = 160;//myOtsu(map);
 
     for (int i = 0; i < 120; i++)
     {
@@ -633,7 +633,7 @@ GG General_Judge(void)
     //全域判断循环
     for (uint8_t i = head; i > farlength; i--)
     {
-        if (all_white[i].num > 6)
+        if (final_road[i].white_num > 6)
         {
             zebra_count++;
         }
@@ -864,7 +864,7 @@ GG image_main(void)
 {
     Start_line = Max(front - 25, FAR_LINE);
     End_line = Min(front + 25, NEAR_LINE);
-
+    front = dir_front;
     THRE();
     head_clear();
     find_bar();
@@ -873,11 +873,11 @@ GG image_main(void)
     /*到此处为止，我们已经得到了属于赛道的结构体数组my_road[CAMERA_H]*/
     ordinary_two_line();
     gg = General_Judge();
-    //printf("<%d>", gg);
     boarder_fixer();
     get_mid_line();
     midline_fixer();
 
+//    printf("<%d>", gg);
 //    for (int i = 119; i >= road_top; i--)
 //    {
 //        for (int j = final_road[i].connected[j_continue[i]].left;

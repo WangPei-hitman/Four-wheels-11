@@ -14,7 +14,7 @@
 //#include "cv.h"
 //#include "highgui.h"
 #include <math.h>
-//#include"my_control.hpp"
+#include"my_control.hpp"
 
 #define GrayScale 256
 
