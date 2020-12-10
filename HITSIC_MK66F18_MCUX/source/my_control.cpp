@@ -134,6 +134,7 @@ error_para_t spdRerror=
 };
 float kinner[3]={1.0f,0.0f,1.0f},kL=1.0f,kR=1.0f;///<内外轮差速
 
+
 /*电机控制*/
 ///////////////////////////////////////////////////////////////////////////////////////
 void motorCTRL (void*)
@@ -183,8 +184,8 @@ void motorCTRL (void*)
     }
     else
     {
-        speedL[0] = 0.0f;
-        speedR[0] = 0.0f;
+        speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,-ctrl_spdL);
+        speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,-ctrl_spdR);
     }
     motorSetSpeed(speedL[0],speedR[0]);//电机输出
 }
