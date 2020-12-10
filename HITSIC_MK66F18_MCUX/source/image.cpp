@@ -63,9 +63,9 @@ uint8_t road_top;//赛道最高处所在行数
 uint8_t j_continue[CAMERA_H];//第一条连通路径
 //uint8_t threshold = 150;//阈值
 int front = 35;//图像专属伪前瞻
-uint8_t length = 20;
+uint8_t length = 10;
 uint8_t farlength = 10;
-uint8_t head = 64;//车头前点
+uint8_t head = 75;//车头前点
 uint8_t head_left = 38;//车头左点
 uint8_t head_right = 145;//车头右点
 POS jud_points[2][3];//123求边沿
@@ -544,8 +544,8 @@ void cross_out(void)
 
     if (Max((int)cor[2].pos.x - (int)length, 1) + 2 < cor[2].pos.x)
     {
-        fxyk(left_line, Max((int)cor[2].pos.x - (int)length, 1), cor[2].pos.x, &kl, &bl);
-        fxyk(right_line, Max((int)cor[3].pos.x - (int)length, 1), cor[3].pos.x, &kr, &br);
+        fxyk(left_line, Max((int)cor[2].pos.x - (int)length, Start_line), cor[2].pos.x, &kl, &bl);
+        fxyk(right_line, Max((int)cor[3].pos.x - (int)length, Start_line), cor[3].pos.x, &kr, &br);
         if (kl > 1)kl = 1;
         if (kr > 1)kr = 1;
         if (kl < -1)kl = -1;
@@ -612,7 +612,7 @@ GG General_Judge(void)
     //float w = 0;
 
     //斜率差判断标志位
-    float k_flage = 2;
+    float k_flage = 5;
     
     //判断点初始化，较稳
     for (uint8_t i = 0; i < 3; i++)
@@ -671,7 +671,7 @@ GG General_Judge(void)
             }
         }
         
-        if (road_top < 5
+        if (road_top < farlength
             && final_road[i].connected[j_continue[i]].left < LEFT_SIDE + 20
             && final_road[i].connected[j_continue[i]].right > RIGHT_SIDE - 20
             && i>Start_line && i < End_line)
@@ -683,7 +683,7 @@ GG General_Judge(void)
     
     if (cross_flager != 0)
     {
-        for (uint8_t i = NEAR_LINE - 15; i >= cross_flager; i--)
+        for (uint8_t i = End_line; i >= cross_flager; i--)
         {
             //左判断点
             jud_points[0][0].x = i;
@@ -713,7 +713,7 @@ GG General_Judge(void)
             kr_down = ((float)jud_points[1][1].y - (float)jud_points[1][2].y)
                 / ((float)jud_points[1][1].x - (float)jud_points[1][2].x);
 
-            if (kl_up - kl_down > k_flage && kl_up > 0 && left != -1)
+            if (kl_up - kl_down > k_flage && kl_up > 2 && left != -1 && kl_down > -2 && kl_down < 2)
             {
                 cor[0].pos.x = jud_points[0][1].x;
                 cor[0].pos.y = jud_points[0][1].y;
@@ -721,7 +721,7 @@ GG General_Judge(void)
                 left = -1;
             }
 
-            if (kr_down - kr_up > k_flage && kr_up < 0 && right != 1)
+            if (kr_down - kr_up > k_flage && kr_up < -2 && right != 1 && kr_down>-2 && kr_down < 2)
             {
                 cor[1].pos.x = jud_points[1][1].x;
                 cor[1].pos.y = jud_points[1][1].y;
@@ -734,8 +734,8 @@ GG General_Judge(void)
                 return CROSS_IN;
             }
         }
-
-        for (uint8_t i = farlength; i <= cross_flager; i++)
+        
+        for (uint8_t i = cross_flager; i >= Start_line; i--)
         {
             //左判断点
             jud_points[0][0].x = i;
@@ -765,7 +765,7 @@ GG General_Judge(void)
             kr_down = ((float)jud_points[1][1].y - (float)jud_points[1][2].y)
                 / ((float)jud_points[1][1].x - (float)jud_points[1][2].x);
 
-            if (kl_up - kl_down > k_flage && left != -1 && kl_down < 0)
+            if (kl_up - kl_down > k_flage && left != -1 && kl_down < -2 && kl_up < 2 && kl_up>-2)
             {
                 cor[2].pos.x = jud_points[0][1].x;
                 cor[2].pos.y = jud_points[0][1].y;
@@ -773,7 +773,7 @@ GG General_Judge(void)
                 left = -1;
             }
 
-            if (kr_down - kr_up > k_flage && right != 1 && kr_down > 0)
+            if (kr_down - kr_up > k_flage && right != 1 && kr_down > 2 && kr_up > -2 && kr_up < 2)
             {
                 cor[3].pos.x = jud_points[1][1].x;
                 cor[3].pos.y = jud_points[1][1].y;
@@ -802,12 +802,12 @@ void midline_fixer(void)
     uint8_t i;
     uint8_t pic[120] = {};
     uint8_t* p_pic;
+    int ml;
     p_pic = pic;
     float k, b;
     switch (gg)
     {
-    case CROSS_IN:
-    case CROSS_OUT:
+    
     case RIGHT_TURN:
     case LEFT_TURN:
         for (i = End_line; i > Start_line; i--)
@@ -818,10 +818,17 @@ void midline_fixer(void)
             }
         }
         fxyk(mid_line, i, i + 5, &k, &b);
+        if (k > 1)k = 1;
+        if (k > 1)k = 1;
         for (; i > Start_line; i--)
         {
-            *(mid_line + i) = (uint8_t)(k * i + b);
+            ml = (int)(k * i + b);
+            if (ml > 187) ml = 187;
+            if (ml < 0) ml = 0;
+            *(mid_line + i) = (uint8_t)ml;
         }
+    case CROSS_IN:
+    case CROSS_OUT:
     case ZEBRA:
         /*fxyk(mid_line, head, NEAR_LINE, &k, &b);
         for (i = head; i > FAR_LINE; i--)
@@ -855,8 +862,8 @@ void midline_fixer(void)
 ///////////////////////////////////////////
 GG image_main(void)
 {
-    Start_line = Max(front - length, FAR_LINE);
-    End_line = Min(front + length, NEAR_LINE);
+    Start_line = Max(front - 25, FAR_LINE);
+    End_line = Min(front + 25, NEAR_LINE);
 
     THRE();
     head_clear();
@@ -870,7 +877,7 @@ GG image_main(void)
     boarder_fixer();
     get_mid_line();
     midline_fixer();
-//
+
 //    for (int i = 119; i >= road_top; i--)
 //    {
 //        for (int j = final_road[i].connected[j_continue[i]].left;

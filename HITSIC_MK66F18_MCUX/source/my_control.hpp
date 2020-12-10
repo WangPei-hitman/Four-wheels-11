@@ -44,16 +44,16 @@ typedef struct error_para
     errorPrev;
 }error_para_t;
 
-extern float transform[6];///<用于发送数据
+extern float transform[7];///<用于发送数据
 
-extern int dir_front,spd_front;
+extern int dir_front;
 extern int thro;
 extern float speedL[3],speedR[3];
 extern pidCtrl_t dirPID_PIC, dirPID_EMA;
 extern uint32_t PicSwitch[3];
 extern uint32_t EmaSwitch[3];
 extern uint32_t spdenable[3];
-
+extern int ZebraNumber;
 extern float servo_ctrlOutput;
 extern float ctrl_spdL , ctrl_spdR ;
 
@@ -97,5 +97,6 @@ float UpdatePIDandCacul(PID_para_t PID,error_para_t* Err,float error);
 void AC(menu_keyOp_t*  op);
 
 void TimerCount (void*);
+void ZebarJudge(void*);
 
 #endif /* MY_CONTROL_HPP_ */

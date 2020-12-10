@@ -90,7 +90,7 @@ FATFS fatfs;                                   //逻辑驱动器的工作区
 #include"my_control.hpp"
 #include "my_elecmag.hpp"
 
-
+GG judgement;
 
 extern int protect;                                   //protection
 
@@ -184,7 +184,7 @@ void main(void)
     {
         //TODO: 在这里添加屏幕显示代码
             pictureDisp();                                  //oled图像显示
-            SCHOST_VarUpload(transform,6);           //WIFI传输
+            SCHOST_VarUpload(transform,7);           //WIFI传输
         //TODO: 在这里添加车模保护代码
     };
 }
@@ -198,7 +198,7 @@ void MENU_DataSetUp(void)
 
 void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transferDone, uint32_t tcds)
 {
-    GG gg;
+
     //TODO: 补完本回调函数，双缓存采图。
     dmadvp_handle_t *dmadvpHandle = (dmadvp_handle_t*) userData;
     status_t result = 0;
@@ -214,7 +214,7 @@ void CAM_ZF9V034_DmaCallback(edma_handle_t *handle, void *userData, bool transfe
     {
         DMADVP_TransferGetFullBuffer(DMADVP0, dmadvpHandle, &fullBuffer);   //读取数据
         threshold=(uint8_t)thro;  //获取阈值
-        gg = image_main();       //处理图像
+        judgement = image_main();       //处理图像
         DMADVP_TransferSubmitEmptyBuffer(DMADVP0, dmadvpHandle, fullBuffer);   //释放指针
     }
 }

@@ -23,13 +23,13 @@ pitMgr_t* directiontask=nullptr;
 pitMgr_t* EMAcolloction=nullptr;
 
 pitMgr_t* timerCounthandler=nullptr;
-
-
+pitMgr_t* ZebraHandler=nullptr;
+extern GG judgement;
 
 int dir_front = 50;//前瞻
 int thro;//摄像头阈值
 
-float transform[6];///< Wi-Fi 数据传输数组
+float transform[7];///< Wi-Fi 数据传输数组
 
 void CTRL_MENUSETUP(menu_list_t* List)
 {
@@ -55,7 +55,7 @@ void CTRL_MENUSETUP(menu_list_t* List)
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kL, "kL", 18, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kR, "kR", 19, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &dir_front, "dir_front", 6, menuItem_data_region));
-                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &spd_front, "spd_front",20,menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &ZebraNumber, "ZebraNumber", 20, menuItem_data_region));
             }
             MENU_ListInsert(Low, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
             MENU_ListInsert(Low,
@@ -90,7 +90,7 @@ void CTRL_MENUSETUP(menu_list_t* List)
     }
 }
 
-pidCtrl_t* SpeedDiff=nullptr;
+
 /**控制环初始化*/
 void controlInit(void)
 {
@@ -105,8 +105,8 @@ void controlInit(void)
 
     timerCounthandler= pitMgr_t::insert(500U,51U,TimerCount,pitMgr_t::enable);
     assert(timerCounthandler);
-
-     SpeedDiff= PIDCTRL_Construct(dirPID_PIC.kp,dirPID_PIC.ki,dirPID_PIC.kd);
+    ZebraHandler =pitMgr_t::insert(CTRL_DIR_CTRL_MS,5U,ZebarJudge,pitMgr_t::enable);
+    assert(ZebraHandler);
 }
 
 
@@ -153,12 +153,10 @@ void motorCTRL (void*)
 
     if(1 == spdenable[0])
     {
-        //  float err_servo = - PIDCTRL_UpdateAndCalcPID(SpeedDiff, (float)(mid_line[spd_front]-94));
+
         float err_servo =servo_ctrlOutput-SERVOMID;
         float spdFix = DIFFSPEED(err_servo)*motorLSet;
 
-        transform[4]=(motorLSet-kinner[0]*spdFix);
-        transform[5]=(motorRSet+(1-kinner[0])*spdFix);
 
         if(err_servo>0)//舵机左打，内轮为左侧
         {
@@ -205,7 +203,6 @@ int spd_front=50;
 
 void directionCTRL(void*)
 {
-    PIDCTRL_Setup(SpeedDiff,dirPID_PIC.kp,dirPID_PIC.ki,dirPID_PIC.kd);
 
     if(PicSwitch[0]==1&&EmaSwitch[0]==0)//图像开
     {
@@ -234,27 +231,6 @@ void directionCTRL(void*)
 
 void motorSetSpeed(float spdL, float spdR)
 {
-    if(spdL>speedL[2])
-    {
-        spdR-=spdL-speedL[2];
-        spdL =speedL[2];
-    }
-    if(spdL<speedL[1])
-    {
-        spdR-=spdL-speedL[1];
-        spdL = speedL[1];
-    }
-
-    if(spdR>speedR[2])
-    {
-        spdL-=spdR-speedR[2];
-        spdR =speedR[2];
-    }
-    if(spdR<speedR[1])
-    {
-        spdL-=spdR-speedR[1];
-        spdR = speedR[1];
-    }
     if (spdR > 0)
     {
         SCFTM_PWM_Change(FTM0, kFTM_Chnl_0, 20000U, 0.0f);
@@ -308,4 +284,39 @@ int timerCount=0;
 void TimerCount(void*)
 {
     timerCount++;
+}
+int ZebraNumber=10;
+void ZebarJudge(void*)
+{
+    transform[6] = judgement;
+    static int ZebraCounter = 0;
+    static int rom=0;
+    if (1 == spdenable[0])
+    {
+        static int ZebraPictureCounter = 0;
+
+
+        if (7 == judgement)
+        {
+            ++ZebraPictureCounter;
+        }
+        else
+        {
+            ZebraPictureCounter = 0;
+        }
+        if (ZebraPictureCounter == ZebraNumber)
+        {
+            ++ZebraCounter;
+            if (2 + rom == ZebraCounter)
+            {
+                spdenable[0] = 0;
+                ZebraPictureCounter = 0;
+                ZebraCounter = 0;
+            }
+        }
+    }
+    else
+    {
+        rom = ZebraCounter;
+    }
 }
