@@ -683,7 +683,7 @@ GG General_Judge(void)
     
     if (cross_flager != 0)
     {
-        for (uint8_t i = End_line; i >= cross_flager; i--)
+        for (uint8_t i = End_line; i > cross_flager; i--)
         {
             //左判断点
             jud_points[0][0].x = i;
@@ -735,7 +735,7 @@ GG General_Judge(void)
             }
         }
         
-        for (uint8_t i = cross_flager; i >= Start_line; i--)
+        for (uint8_t i = Start_line; i < cross_flager; i++)
         {
             //左判断点
             jud_points[0][0].x = i;
