@@ -62,11 +62,11 @@ int all_bar = 0;//所有白条子数
 uint8_t road_top;//赛道最高处所在行数
 uint8_t j_continue[CAMERA_H];//第一条连通路径
 //uint8_t threshold = 150;//阈值
-int front = 25;//图像专属伪前瞻
+int front = 30;//图像专属伪前瞻
 uint8_t length = 10;
 uint8_t farlength = 10;
-uint8_t head = 75;//车头前点
-uint8_t head_left = 38;//车头左点
+uint8_t head = 67;//车头前点
+uint8_t head_left = 35;//车头左点
 uint8_t head_right = 145;//车头右点
 POS jud_points[2][3];//123求边沿
 
@@ -136,14 +136,15 @@ void THRE()
 void head_clear(void)
 {
     int aaa = 0;
+    int bbb = 0;
     uint8_t* my_map;
     for (int i = 119; i >= head; i--)
     {
         my_map = &IMG[i][0];
-        aaa = static_cast<int>(0.4 * (120 - i));//c++强转，感谢学嘉
-
+        aaa = static_cast<int>(0.45 * (120 - i));//c++强转，感谢学嘉
+        bbb = static_cast<int>(0.45 * (120 - i));
         //梯形清车头
-        for (int j = head_left + aaa; j <= head_right - aaa; j++)
+        for (int j = head_left + aaa; j <= head_right - bbb; j++)
         {
             *(my_map + j) = white;
         }
@@ -329,8 +330,8 @@ uint8_t find_continue(uint8_t i_start, uint8_t j_start)
 {
     uint8_t j_return;//选定白条编号
     uint8_t j;
-    uint8_t width_max = 0;
-    uint8_t width_new = 0;
+    uint8_t width_max = 1;
+    uint8_t width_new = 1;
     uint8_t left = 0;
     uint8_t right = 0;
     uint8_t dright, dleft, uright, uleft;
@@ -466,6 +467,18 @@ void boarder_fixer(void)
 {
     switch (gg)
     {
+    case LEFT_TURN:
+//        for (uint8_t i = 0; i < 120; i++)
+//        {
+//            *(right_line + i) = (*(right_line + i) + *(left_line + i)) / 2;
+//        }
+        break;
+    case RIGHT_TURN:
+//        for (uint8_t i = 0; i < 120; i++)
+//        {
+//            *(left_line + i) = (*(right_line + i) + *(left_line + i)) / 2;
+//        }
+        break;
     case CROSS_OUT:
         cross_out();
         break;
@@ -520,11 +533,11 @@ void cross_in(void)
     if (kr > 1)kr = 1;
     if (kl < -1)kl = -1;
     if (kr < -1)kr = -1;
-    for (i = 1; i <= Min(cor[0].pos.x + length, NEAR_LINE); i++)
+    for (i = 1; i <= Min(cor[0].pos.x, NEAR_LINE); i++)
     {
         *(left_line + i) = (uint8_t)(kl * i + bl);
     }
-    for (i = 1; i <= Min(cor[1].pos.x + length, NEAR_LINE); i++)
+    for (i = 1; i <= Min(cor[1].pos.x, NEAR_LINE); i++)
     {
         *(right_line + i) = (uint8_t)(kr * i + br);
     }
@@ -633,13 +646,20 @@ GG General_Judge(void)
     //全域判断循环
     for (uint8_t i = head; i > farlength; i--)
     {
-        if (final_road[i].white_num > 6)
+        if (final_road[i].white_num > 6 && i<End_line && i>Start_line)
         {
+            *(left_line + i) = final_road[i].connected[1].left;
+            *(right_line + i) = final_road[i].connected[final_road[i].white_num].right;
             zebra_count++;
         }
 
         if (zebra_count > 3)
         {
+            for(int j = -length; j < length; j++)
+            {
+                *(left_line + i + j) = final_road[i + j].connected[1].left;
+                *(right_line + i + j) = final_road[i + j].connected[final_road[i + j].white_num].right;
+            }
             return  ZEBRA;
         }
 
@@ -656,22 +676,23 @@ GG General_Judge(void)
             return OUT;
         }
 
-        if (road_top > farlength)
+        if (road_top > farlength && i > Start_line && i < End_line && i>road_top)
         {
-            if (final_road[i].connected[j_continue[i]].left > 94
+            if (final_road[i].connected[j_continue[i]].left < LEFT_SIDE + 4
+                && final_road[i].connected[j_continue[i]].right < head_right)
+            {
+                return LEFT_TURN;
+            }
+
+            if (final_road[i].connected[j_continue[i]].left > head_left
                 && final_road[i].connected[j_continue[i]].right > RIGHT_SIDE - 4)
             {
                 return RIGHT_TURN;
             }
 
-            if (final_road[i].connected[j_continue[i]].left < LEFT_SIDE + 4
-                && final_road[i].connected[j_continue[i]].right < 94)
-            {
-                return LEFT_TURN;
-            }
         }
         
-        if (road_top < farlength
+        if (road_top < Start_line
             && final_road[i].connected[j_continue[i]].left < LEFT_SIDE + 20
             && final_road[i].connected[j_continue[i]].right > RIGHT_SIDE - 20
             && i>Start_line && i < End_line)
@@ -713,7 +734,7 @@ GG General_Judge(void)
             kr_down = ((float)jud_points[1][1].y - (float)jud_points[1][2].y)
                 / ((float)jud_points[1][1].x - (float)jud_points[1][2].x);
 
-            if (kl_up - kl_down > k_flage && kl_up > 2 && left != -1 && kl_down > -2 && kl_down < 2)
+            if (kl_up - kl_down > k_flage && kl_up > 1 && left != -1 && kl_down > -2 && kl_down < 2)
             {
                 cor[0].pos.x = jud_points[0][1].x;
                 cor[0].pos.y = jud_points[0][1].y;
@@ -721,7 +742,7 @@ GG General_Judge(void)
                 left = -1;
             }
 
-            if (kr_down - kr_up > k_flage && kr_up < -2 && right != 1 && kr_down>-2 && kr_down < 2)
+            if (kr_down - kr_up > k_flage && kr_up < -1 && right != 1 && kr_down > -2 && kr_down < 2)
             {
                 cor[1].pos.x = jud_points[1][1].x;
                 cor[1].pos.y = jud_points[1][1].y;
@@ -735,7 +756,7 @@ GG General_Judge(void)
             }
         }
         
-        for (uint8_t i = cross_flager; i >= Start_line; i--)
+        for (uint8_t i = Start_line; i <= cross_flager; i++)
         {
             //左判断点
             jud_points[0][0].x = i;
@@ -765,7 +786,7 @@ GG General_Judge(void)
             kr_down = ((float)jud_points[1][1].y - (float)jud_points[1][2].y)
                 / ((float)jud_points[1][1].x - (float)jud_points[1][2].x);
 
-            if (kl_up - kl_down > k_flage && left != -1 && kl_down < -2 && kl_up < 2 && kl_up>-2)
+            if (kl_up - kl_down > k_flage && left != -1 && kl_down < -1 && kl_up < 2 && kl_up>-2)
             {
                 cor[2].pos.x = jud_points[0][1].x;
                 cor[2].pos.y = jud_points[0][1].y;
@@ -773,7 +794,7 @@ GG General_Judge(void)
                 left = -1;
             }
 
-            if (kr_down - kr_up > k_flage && right != 1 && kr_down > 2 && kr_up > -2 && kr_up < 2)
+            if (kr_down - kr_up > k_flage && right != 1 && kr_down > 1 && kr_up > -2 && kr_up < 2)
             {
                 cor[3].pos.x = jud_points[1][1].x;
                 cor[3].pos.y = jud_points[1][1].y;
@@ -809,6 +830,26 @@ void midline_fixer(void)
     {
     
     case RIGHT_TURN:
+        for (i = End_line; i > Start_line; i--)
+        {
+            if (*(mid_line + i) > * (mid_line + i + 1) + 1 || *(mid_line + i) + 1 < *(mid_line + i + 1))
+            {
+                break;
+            }
+        }
+        fxyk(mid_line, i, i + 10, &k, &b);
+        if (k > 0)k = 0;
+        if (k > 0)k = 0;
+        if (k < -1)k = -1;
+        if (k < -1)k = -1;
+        for (; i > Start_line; i--)
+        {
+            ml = (int)(k * i + b);
+            if (ml > 187) ml = 187;
+            if (ml < 0) ml = 0;
+            *(mid_line + i) = (uint8_t)ml;
+        }
+        break;
     case LEFT_TURN:
         for (i = End_line; i > Start_line; i--)
         {
@@ -817,9 +858,11 @@ void midline_fixer(void)
                 break;
             }
         }
-        fxyk(mid_line, i, i + 5, &k, &b);
+        fxyk(mid_line, i, i + 10, &k, &b);
         if (k > 1)k = 1;
         if (k > 1)k = 1;
+        if (k < 0)k = 0;
+        if (k < 0)k = 0;
         for (; i > Start_line; i--)
         {
             ml = (int)(k * i + b);
@@ -827,29 +870,24 @@ void midline_fixer(void)
             if (ml < 0) ml = 0;
             *(mid_line + i) = (uint8_t)ml;
         }
+        break;
     case CROSS_IN:
     case CROSS_OUT:
     case ZEBRA:
-        /*fxyk(mid_line, head, NEAR_LINE, &k, &b);
-        for (i = head; i > FAR_LINE; i--)
-        {
-            *(mid_line + i) = (uint8_t)(k * i + b);
-        }
-        break;*/
     case STRAIGHT:
-        for (i = NEAR_LINE; i > farlength; i--)
-        {
-            *(p_pic + i) =
-                (*(mid_line + i - 2) + *(mid_line + i - 1) + *(mid_line + i) + *(mid_line + i + 1) + *(mid_line + i + 2)) / 5;
-        }
-        for (i = NEAR_LINE; i > farlength; i--)
-        {
-            *(mid_line + i) = *(p_pic + i);
-        }
-        break;
-    
+        
+        break;   
     default:
         break;
+    }
+    for (i = NEAR_LINE; i > farlength; i--)
+    {
+        *(p_pic + i) =
+            (*(mid_line + i - 2) + *(mid_line + i - 1) + *(mid_line + i) + *(mid_line + i + 1) + *(mid_line + i + 2)) / 5;
+    }
+    for (i = NEAR_LINE; i > farlength; i--)
+    {
+        *(mid_line + i) = *(p_pic + i);
     }
 }
 
@@ -862,7 +900,7 @@ void midline_fixer(void)
 ///////////////////////////////////////////
 GG image_main(void)
 {
-    Start_line = Max(front - 25, FAR_LINE);
+    Start_line = Max(front - 25, farlength);
     End_line = Min(front + 25, NEAR_LINE);
     front = dir_front;
     THRE();
@@ -895,6 +933,12 @@ GG image_main(void)
 //            IMG[i][left_line[i]] = purple;
 //            IMG[i][right_line[i]] = purple;
 //        }
+//
+//
+//    }
+//    for (int j = 0; j < 188; j++)
+//    {
+//        IMG[farlength][j] = red;
 //    }
 //    IMG[front][mid_line[front]] = red;
 //    IMG[front][mid_line[front] + 1] = red;

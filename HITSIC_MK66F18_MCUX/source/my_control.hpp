@@ -63,7 +63,7 @@ extern error_para_t spdLerror,spdRerror;
 extern float motorLSet,motorRSet;
 extern float motorLOutput,motorROutput;
 extern int timerCount;
-
+extern int spdstr;
 
 /*
  * @brief:控制参数菜单

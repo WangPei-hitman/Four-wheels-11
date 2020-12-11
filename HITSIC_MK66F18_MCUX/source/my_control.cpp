@@ -55,6 +55,7 @@ void CTRL_MENUSETUP(menu_list_t* List)
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kL, "kL", 18, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kR, "kR", 19, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &dir_front, "dir_front", 6, menuItem_data_region));
+                //MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &spd_front, "spd_front", 33, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(variType, &ZebraNumber, "ZebraNumber", 20, menuItem_data_region));
             }
             MENU_ListInsert(Low, MENU_ItemConstruct(variType, &thro, "threshold", 11, menuItem_data_global));
@@ -69,8 +70,9 @@ void CTRL_MENUSETUP(menu_list_t* List)
     {
         MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &motorLSet, "speedL", 1, menuItem_data_region));
         MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &motorRSet, "speedR", 2, menuItem_data_region));
-        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &speedL[2], "speedMax", 17, menuItem_data_region));
-        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &speedL[1], "speedMin", 18, menuItem_data_region));
+        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &spdstr, "spdstr", 30, menuItem_data_region));
+        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &speedL[2], "speedMax", 31, menuItem_data_region));
+        MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &speedL[1], "speedMin", 32, menuItem_data_region));
         MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &ctrl_spdL, "ctrl_spdL", 0U, menuItem_data_NoSave | menuItem_data_NoLoad));
         MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &ctrl_spdR, "ctrl_spdR", 0U, menuItem_data_NoSave | menuItem_data_NoLoad));
         MENU_ListInsert(basicpara, MENU_ItemConstruct(varfType, &servo_ctrlOutput, "Servo", 0U, menuItem_data_NoSave | menuItem_data_NoLoad));
@@ -134,60 +136,75 @@ error_para_t spdRerror=
 };
 float kinner[3]={1.0f,0.0f,1.0f},kL=1.0f,kR=1.0f;///<内外轮差速
 
-
+//int spd_front =25;
+int spdstr=3.0f;
 /*电机控制*/
 ///////////////////////////////////////////////////////////////////////////////////////
 void motorCTRL (void*)
 {
-    ctrl_spdL = ((float)SCFTM_GetSpeed(FTM1)) * SPD_COEFF;//编码器获取速度
-    SCFTM_ClearSpeed(FTM1);//清空编码器
-    ctrl_spdR = -((float)SCFTM_GetSpeed(FTM2))* SPD_COEFF;
+    ctrl_spdL = ((float) SCFTM_GetSpeed(FTM1)) * SPD_COEFF;    //编码器获取速度
+    SCFTM_ClearSpeed(FTM1);    //清空编码器
+    ctrl_spdR = -((float) SCFTM_GetSpeed(FTM2)) * SPD_COEFF;
     SCFTM_ClearSpeed(FTM2);
 
-    transform[0]=ctrl_spdL;
-    transform[1]=ctrl_spdR;
-    transform[2]=motorLSet;
-    transform[3]=motorRSet;//WiFi传值
+    transform[0] = ctrl_spdL;
+    transform[1] = ctrl_spdR;
+    transform[2] = motorLSet;
+    transform[3] = motorRSet;    //WiFi传值
 
-    speedR[2]=speedL[2];///<速度最值设定
-    speedR[1]=speedL[1];
+    speedR[2] = speedL[2];    ///<速度最值设定
+    speedR[1] = speedL[1];
 
-    if(1 == spdenable[0])
+    if (1 == spdenable[0])
     {
 
-        float err_servo =servo_ctrlOutput-SERVOMID;
-        float spdFix = DIFFSPEED(err_servo)*motorLSet;
+        float err_servo = servo_ctrlOutput - SERVOMID;
+        float spdFix = DIFFSPEED(err_servo) * motorLSet;
 
-
-        if(err_servo>0)//舵机左打，内轮为左侧
+        if (abs(err_servo) < 0.1)
         {
-            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*kinner[0]*spdFix)-ctrl_spdL);
-            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kR*(1.0f-kinner[0]) * spdFix) - ctrl_spdR);
-            transform[4]=(motorLSet-kL*kinner[0]*spdFix);
-            transform[5]=(motorRSet+kR*(1-kinner[0])*spdFix);
-            speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
-            speedL[0]=(speedL[0]<speedL[1])?speedL[1]:speedL[0];
-            speedR[0]=(speedR[0]>speedR[2])?speedR[2]:speedR[0];
-            speedR[0]=(speedR[0]<speedR[1])?speedR[1]:speedR[0];
+            speedL[0] += UpdatePIDandCacul(spdPID, &spdLerror, spdstr - ctrl_spdL);
+            speedR[0] += UpdatePIDandCacul(spdPID, &spdRerror, spdstr - ctrl_spdR);
+            transform[4] = spdstr;
+            transform[5] = spdstr;
+            speedL[0] = (speedL[0] > speedL[2]) ? speedL[2] : speedL[0];
+            speedL[0] = (speedL[0] < speedL[1]) ? speedL[1] : speedL[0];
+            speedR[0] = (speedR[0] > speedR[2]) ? speedR[2] : speedR[0];
+            speedR[0] = (speedR[0] < speedR[1]) ? speedR[1] : speedR[0];
         }
-        else
+        else if (err_servo > 0)    //舵机左打，内轮为左侧
         {
-            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*(1.0f-kinner[0])*spdFix)-ctrl_spdL);
-            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kR*kinner[0]*spdFix)-ctrl_spdR);
-            transform[4]=(motorLSet-kL*(1.0f-kinner[0])*spdFix);
-            transform[5]=(motorRSet+kR*kinner[0]*spdFix);
-            speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
-            speedL[0]=(speedL[0]<speedL[1])?speedL[1]:speedL[0];
-            speedR[0]=(speedR[0]>speedR[2])?speedR[2]:speedR[0];
-            speedR[0]=(speedR[0]<speedR[1])?speedR[1]:speedR[0];
+            speedL[0] += UpdatePIDandCacul(spdPID, &spdLerror, (motorLSet - kL * kinner[0] * spdFix) - ctrl_spdL);
+            speedR[0] += UpdatePIDandCacul(spdPID, &spdRerror, (motorRSet + kR * (1.0f - kinner[0]) * spdFix) - ctrl_spdR);
+            transform[4] = (motorLSet - kL * kinner[0] * spdFix);
+            transform[5] = (motorRSet + kR * (1 - kinner[0]) * spdFix);
+            speedL[0] = (speedL[0] > speedL[2]) ? speedL[2] : speedL[0];
+            speedL[0] = (speedL[0] < speedL[1]) ? speedL[1] : speedL[0];
+            speedR[0] = (speedR[0] > speedR[2]) ? speedR[2] : speedR[0];
+            speedR[0] = (speedR[0] < speedR[1]) ? speedR[1] : speedR[0];
+        }
+        else if (err_servo < 0)
+        {
+            speedL[0] += UpdatePIDandCacul(spdPID, &spdLerror, (motorLSet - kL * (1.0f - kinner[0]) * spdFix) - ctrl_spdL);
+            speedR[0] += UpdatePIDandCacul(spdPID, &spdRerror, (motorRSet + kR * kinner[0] * spdFix) - ctrl_spdR);
+            transform[4] = (motorLSet - kL * (1.0f - kinner[0]) * spdFix);
+            transform[5] = (motorRSet + kR * kinner[0] * spdFix);
+            speedL[0] = (speedL[0] > speedL[2]) ? speedL[2] : speedL[0];
+            speedL[0] = (speedL[0] < speedL[1]) ? speedL[1] : speedL[0];
+            speedR[0] = (speedR[0] > speedR[2]) ? speedR[2] : speedR[0];
+            speedR[0] = (speedR[0] < speedR[1]) ? speedR[1] : speedR[0];
         }
     }
     else
     {
-        speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,-ctrl_spdL);
-        speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,-ctrl_spdR);
+        speedL[0] += UpdatePIDandCacul(spdPID, &spdLerror, -ctrl_spdL);
+        speedR[0] += UpdatePIDandCacul(spdPID, &spdRerror, -ctrl_spdR);
+        speedL[0] = (speedL[0] > speedL[2]) ? speedL[2] : speedL[0];
+        speedL[0] = (speedL[0] < speedL[1]) ? speedL[1] : speedL[0];
+        speedR[0] = (speedR[0] > speedR[2]) ? speedR[2] : speedR[0];
+        speedR[0] = (speedR[0] < speedR[1]) ? speedR[1] : speedR[0];
     }
-    motorSetSpeed(speedL[0],speedR[0]);//电机输出
+    motorSetSpeed(speedL[0], speedR[0]);    //电机输出
 }
 
 
@@ -195,38 +212,40 @@ pidCtrl_t dirPID_PIC =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
 pidCtrl_t dirPID_EMA =
 { .kp = 0.0f, .ki = 0.0f, .kd = 0.0f, .errCurr = 0.0f, .errIntg = 0.0f, .errDiff = 0.0f, .errPrev = 0.0f, };
-float servo_ctrlOutput =SERVOMID;///<舵机输出
+float servo_ctrlOutput = SERVOMID;    ///<舵机输出
 
-uint32_t PicSwitch[3]={0,0,1};
-uint32_t EmaSwitch[3]={0,0,1};
-
-int spd_front=50;
+uint32_t PicSwitch[3] =
+{ 0, 0, 1 };
+uint32_t EmaSwitch[3] =
+{ 0, 0, 1 };
 
 void directionCTRL(void*)
 {
 
-    if(PicSwitch[0]==1&&EmaSwitch[0]==0)//图像开
+    if (PicSwitch[0] == 1 && EmaSwitch[0] == 0)    //图像开
     {
 
-        servo_ctrlOutput =SERVOMID - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float)(mid_line[dir_front]-94));
-         if(255==mid_line[dir_front])
-            {
-             servo_ctrlOutput=SERVOMID;
-            }
-           else if(servo_ctrlOutput>SERVOLEFT)
-           {  servo_ctrlOutput = SERVOLEFT;}
-           else if(servo_ctrlOutput<SERVORIGHT)
-           { servo_ctrlOutput = SERVORIGHT;}//输出舵机打角
-    }
-    else if(PicSwitch[0]==0&&EmaSwitch[0]==1)//电磁开
-    {
-        servo_ctrlOutput =7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID_EMA,DRP(adc[1],adc[0]));
-        if(servo_ctrlOutput>SERVOLEFT)
+        servo_ctrlOutput = SERVOMID - PIDCTRL_UpdateAndCalcPID(&dirPID_PIC, (float) (mid_line[dir_front] - 94));
+        if (255 == mid_line[dir_front])
+        {
+            servo_ctrlOutput = SERVOMID;
+        }
+        else if (servo_ctrlOutput > SERVOLEFT)
+        {
             servo_ctrlOutput = SERVOLEFT;
-        else if(servo_ctrlOutput<SERVORIGHT)
+        }
+        else if (servo_ctrlOutput < SERVORIGHT)
+        {
             servo_ctrlOutput = SERVORIGHT;
+        }    //输出舵机打角
     }
-        SCFTM_PWM_ChangeHiRes(FTM3,kFTM_Chnl_7,50U,servo_ctrlOutput);
+    else if (PicSwitch[0] == 0 && EmaSwitch[0] == 1)    //电磁开
+    {
+        servo_ctrlOutput = 7.5f - PIDCTRL_UpdateAndCalcPID(&dirPID_EMA, DRP(adc[1], adc[0]));
+        if (servo_ctrlOutput > SERVOLEFT) servo_ctrlOutput = SERVOLEFT;
+        else if (servo_ctrlOutput < SERVORIGHT) servo_ctrlOutput = SERVORIGHT;
+    }
+    SCFTM_PWM_ChangeHiRes(FTM3, kFTM_Chnl_7, 50U, servo_ctrlOutput);
 }
 
 
