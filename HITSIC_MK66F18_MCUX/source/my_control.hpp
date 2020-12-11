@@ -58,7 +58,7 @@ extern float servo_ctrlOutput;
 extern float ctrl_spdL , ctrl_spdR ;
 
 extern float kinner[3],kL,kR;
-extern PID_para_t spdPID;
+extern PID_para_t spdLPID,spdRPID;
 extern error_para_t spdLerror,spdRerror;
 extern float motorLSet,motorRSet;
 extern float motorLOutput,motorROutput;
@@ -98,5 +98,6 @@ void AC(menu_keyOp_t*  op);
 
 void TimerCount (void*);
 void ZebarJudge(void*);
+void CTRL_Spdtest(void*);
 
 #endif /* MY_CONTROL_HPP_ */

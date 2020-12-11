@@ -10,7 +10,7 @@
 #define EPS 10
 #define DRP(x,y)  ((x-y)/(x*y))
 #define SPD_COEFF 0.03463802
-#define DELAY 3000
+
 #define SERVOMID 7.49f
 #define SERVOLEFT 8.45f
 #define SERVORIGHT 6.7f
@@ -21,9 +21,14 @@
 pitMgr_t* motorcontrol =nullptr;
 pitMgr_t* directiontask=nullptr;
 pitMgr_t* EMAcolloction=nullptr;
-
 pitMgr_t* timerCounthandler=nullptr;
 pitMgr_t* ZebraHandler=nullptr;
+
+pitMgr_t* spdTestHandler=nullptr;
+
+
+
+
 extern GG judgement;
 
 int dir_front = 50;//前瞻
@@ -47,10 +52,12 @@ void CTRL_MENUSETUP(menu_list_t* List)
             {
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &dirPID_PIC.kp, "dir_kp", 3, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &dirPID_PIC.kd, "dir_kd", 4, menuItem_data_region));
-                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &dirPID_PIC.ki, "dir_ki", 5, menuItem_data_region));
-                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.kp, "spd_kp", 14, menuItem_data_region));
-                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.kd, "spd_kd", 15, menuItem_data_region));
-                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.ki, "spd_ki", 16, menuItem_data_region));
+                //MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &dirPID_PIC.ki, "dir_ki", 5, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdRPID.kp, "spdR_kp", 14, menuItem_data_region));
+                //MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdPID.kd, "spd_kd", 15, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdRPID.ki, "spdR_ki", 16, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdLPID.kp, "spdL_kp", 5, menuItem_data_region));
+                MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &spdLPID.ki, "spdL_ki", 15, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kinner[0], "kinner", 17, menuItem_data_region|menuItem_dataExt_HasMinMax));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kL, "kL", 18, menuItem_data_region));
                 MENU_ListInsert(pidcontrol_low, MENU_ItemConstruct(varfType, &kR, "kR", 19, menuItem_data_region));
@@ -107,6 +114,9 @@ void controlInit(void)
     assert(timerCounthandler);
     ZebraHandler =pitMgr_t::insert(CTRL_DIR_CTRL_MS,5U,ZebarJudge,pitMgr_t::enable);
     assert(ZebraHandler);
+//
+//    spdTestHandler=pitMgr_t::insert(1000,5U,CTRL_Spdtest,pitMgr_t::enable);
+//    assert(spdTestHandler);
 }
 
 
@@ -120,7 +130,11 @@ float motorLSet=0.0f,motorRSet=0.0f;//电机速度设定（差速用）
 
 uint32_t spdenable[3]={0,0,1};///<速度环使能
 
-PID_para_t spdPID =
+PID_para_t spdRPID =
+{
+     .kp=0.0f,.ki=0.0f,.kd=0.0f
+};
+PID_para_t spdLPID =
 {
      .kp=0.0f,.ki=0.0f,.kd=0.0f
 };
@@ -161,8 +175,8 @@ void motorCTRL (void*)
 
         if(err_servo>0)//舵机左打，内轮为左侧
         {
-            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*kinner[0]*spdFix)-ctrl_spdL);
-            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kR*(1.0f-kinner[0]) * spdFix) - ctrl_spdR);
+            speedL[0]+=UpdatePIDandCacul(spdLPID,&spdLerror,(motorLSet-kL*kinner[0]*spdFix)-ctrl_spdL);
+            speedR[0]+=UpdatePIDandCacul(spdRPID,&spdRerror,(motorRSet+kR*(1.0f-kinner[0]) * spdFix) - ctrl_spdR);
             transform[4]=(motorLSet-kL*kinner[0]*spdFix);
             transform[5]=(motorRSet+kR*(1-kinner[0])*spdFix);
             speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
@@ -172,8 +186,8 @@ void motorCTRL (void*)
         }
         else
         {
-            speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,(motorLSet-kL*(1.0f-kinner[0])*spdFix)-ctrl_spdL);
-            speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,(motorRSet+kR*kinner[0]*spdFix)-ctrl_spdR);
+            speedL[0]+=UpdatePIDandCacul(spdLPID,&spdLerror,(motorLSet-kL*(1.0f-kinner[0])*spdFix)-ctrl_spdL);
+            speedR[0]+=UpdatePIDandCacul(spdRPID,&spdRerror,(motorRSet+kR*kinner[0]*spdFix)-ctrl_spdR);
             transform[4]=(motorLSet-kL*(1.0f-kinner[0])*spdFix);
             transform[5]=(motorRSet+kR*kinner[0]*spdFix);
             speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
@@ -184,8 +198,12 @@ void motorCTRL (void*)
     }
     else
     {
-        speedL[0]+=UpdatePIDandCacul(spdPID,&spdLerror,-ctrl_spdL);
-        speedR[0]+=UpdatePIDandCacul(spdPID,&spdRerror,-ctrl_spdR);
+        speedL[0]+=UpdatePIDandCacul(spdLPID,&spdLerror,0.0f-ctrl_spdL);
+        speedR[0]+=UpdatePIDandCacul(spdRPID,&spdRerror,0.0f-ctrl_spdR);
+        speedL[0]=(speedL[0]>speedL[2])?speedL[2]:speedL[0];
+        speedL[0]=(speedL[0]<speedL[1])?speedL[1]:speedL[0];
+        speedR[0]=(speedR[0]>speedR[2])?speedR[2]:speedR[0];
+        speedR[0]=(speedR[0]<speedR[1])?speedR[1]:speedR[0];
     }
     motorSetSpeed(speedL[0],speedR[0]);//电机输出
 }
@@ -200,7 +218,7 @@ float servo_ctrlOutput =SERVOMID;///<舵机输出
 uint32_t PicSwitch[3]={0,0,1};
 uint32_t EmaSwitch[3]={0,0,1};
 
-int spd_front=50;
+
 
 void directionCTRL(void*)
 {
@@ -320,4 +338,37 @@ void ZebarJudge(void*)
     {
         rom = ZebraCounter;
     }
+}
+
+int spdtestcount = 0;
+void CTRL_Spdtest(void*)
+{
+    if(spdtestcount>3)
+    {
+        spdtestcount = 0;
+    }
+    switch(spdtestcount)
+    {
+    case 0:
+        motorLSet=0.0f;
+        motorRSet=0.0f;
+        break;
+    case 1:
+        motorLSet=1.0f;
+        motorRSet=1.0f;
+        break;
+    case 2:
+        motorLSet=2.0f;
+        motorRSet=2.0f;
+        break;
+    case 3:
+        motorLSet=3.0f;
+        motorRSet=3.0f;
+        break;
+    default:
+        motorLSet=0.0f;
+        motorRSet=0.0f;
+        break;
+    }
+    spdtestcount++;
 }
