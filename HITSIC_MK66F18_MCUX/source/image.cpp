@@ -849,6 +849,10 @@ void midline_fixer(void)
             if (ml < 0) ml = 0;
             *(mid_line + i) = (uint8_t)ml;
         }
+        if(mid_line[front]==MISS)
+        {
+            mid_line[front]=187;
+        }
         break;
     case LEFT_TURN:
         for (i = End_line; i > Start_line; i--)
@@ -869,6 +873,10 @@ void midline_fixer(void)
             if (ml > 187) ml = 187;
             if (ml < 0) ml = 0;
             *(mid_line + i) = (uint8_t)ml;
+        }
+        if(mid_line[front]==MISS)
+        {
+            mid_line[front]=0;
         }
         break;
     case CROSS_IN:
